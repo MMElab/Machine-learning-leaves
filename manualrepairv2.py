@@ -250,7 +250,7 @@ def addorremoveobject(filein,filename,folder,auto):
                     objectcsvfilename = folder +'Objects_'+objectname+'/'+filename+'.JPG_table.csv'
                     objectimagefilename = folder +'Objects_'+objectname+'/'+filename+'.JPG_Object Identities.npy'
                     np.save(objectimagefilename,objectimage)
-                    newentry = {'object_id':object_id,'labelimage_oid': newnumber,'Size in pixels': np.sum(objectimage==newnumber), 'Object Area': np.sum(objectimage==newnumber), 'Center of the object_0': cX, 'Center of the object_1': cY}
+                    newentry = {'Predicted Class': 'Manual','object_id':object_id,'labelimage_oid': newnumber,'Size in pixels': np.sum(objectimage==newnumber), 'Object Area': np.sum(objectimage==newnumber), 'Center of the object_0': cX, 'Center of the object_1': cY}
                     objectcsv = objectcsv.append(newentry,ignore_index=True)
                     objectcsv.to_csv(objectcsvfilename,index=False)
                 elif check == 'n':

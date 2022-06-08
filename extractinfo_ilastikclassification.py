@@ -24,7 +24,9 @@ from skimage import measure
 filterplugabsence = 2                   # Filters out all plugs in a dataset if x are missing (Default=2)
 filterminimumnecrosis = 15000           # Minimum area that necrosis needs to be to be considered (Area minus plug) Default = 10000
 filterminimumdistancenecrosis = -100    # Minimum distance of necrosis to plug (So filters out far away areas) Default = -100
-maxleaves =5                            # Filters out lowest probability leaves if more leaves are present than expected
+maxleaves = 5                           # Filters out lowest probability leaves if more leaves are present than expected
+overwritemanuals = True                 # If overwrite manuals equals True then the manual repair that was performed on this dataset will be removed
+
 ## Functions
 # Finds the closest and furthest point based on a skeleton
 def closestandfurthestpoints(skeleton,point):
@@ -121,23 +123,24 @@ multifolderpath = Path(multifolder)
 for folderpath in multifolderpath.glob("*_h5"):
     folder = str(folderpath)+'\\'
     for filein in folderpath.glob("*.h5"):
+        
         # Finding filename in folder
         filename = filein
         filename = os.path.basename(filein)
         filename = filename[:-7]
-        # Loading all the ilastik generated datafiles:
         
+        # Loading all the ilastik generated datafiles:
         # Petri data
         petrifilename = folder +'Objects_petri/'+filename+'.JPG_table.csv'
         petricsv = pd.read_csv(petrifilename)
         if len(petricsv)>1:
-            petricsv = petricsv.loc[petricsv['Size in pixels']==petricsv['Size in pixels'].max()]
-            
+            petricsv = petricsv.loc[petricsv['Size in pixels']==petricsv['Size in pixels'].max()]  
         petriradius = (petricsv['Radii of the object_1'][0]+petricsv['Radii of the object_0'][0])/2
         petrisize =petricsv['Size in pixels'][0]
         petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
         petriimage = np.squeeze(np.load(petriimagefilename))
         petriimage[petriimage!=int(petricsv['labelimage_oid'])]=0
+        
         # Leaf data
         leafcsvfilename = folder +'Objects_leaf/'+filename+'.JPG_table.csv'
         leafcsv = pd.read_csv(leafcsvfilename)
@@ -154,6 +157,7 @@ for folderpath in multifolderpath.glob("*_h5"):
                     removeindex = i
             leafcsv.drop(leafcsv.loc[leafcsv['labelimage_oid']==removeindex].index)
             leafimage[leafimage==removeindex]=0
+        
         # Plug data
         plugcsvfilename = folder +'Objects_plug/'+filename+'.JPG_table.csv'
         plugcsv = pd.read_csv(plugcsvfilename)
@@ -185,15 +189,6 @@ for folderpath in multifolderpath.glob("*_h5"):
         Summaryoutput['necrosis_area'] = np.nan
         Summaryoutput['necrosis_distance'] = np.nan
         Summaryoutput['necrosis_leaffraction'] = np.nan
-        # if len(leafcsv) == len(plugcsv):
-        #     matchingleaveplug = 1
-        #     noplugs = 0
-        # elif len(plugcsv) == 0:
-        #     noplugs = 1
-        #     matchingleaveplug = 0
-        # else: 
-        #     matchingleaveplug = 0
-        #     noplugs = 0
     
     # Defines which number of plug/necrosis belongs to which leaf        
         necrosisleafdict = dict() 
@@ -201,8 +196,21 @@ for folderpath in multifolderpath.glob("*_h5"):
         plugcentredict = dict()
         
         if 'labelimage_oid' in plugcsv:
-            plugimage,plugcentredict,plugleafdict= plugfinder(leafimage,plugprobabilityimage)
-            
+            if 'Manual' in list(plugcsv['Predicted Class']) and overwritemanuals == False:
+                a = 1
+            else:
+                plugcsv = plugcsv[0:0]
+                plugimage,plugcentredict,plugleafdict= plugfinder(leafimage,plugprobabilityimage)
+                for i in range(1,int(np.max(plugimage))):
+                    newplugid = i-1
+                    plugcsv = plugcsv.append(pd.Series(),ignore_index=True)
+                    plugcsv['object_id'].iloc[newplugid]=newplugid
+                    plugcsv['labelimage_oid'].iloc[newplugid] = i
+                    plugcsv['Predicted Class'].iloc[newplugid]='Automatic'
+                    plugcsv['Center of the object_0'].iloc[newplugid]=plugcentredict[i][0]
+                    plugcsv['Center of the object_1'].iloc[newplugid]=plugcentredict[i][1]
+                    plugcsv['Size in pixels'].iloc[newplugid]=np.sum(plugimage==i)
+                
             
             #plugcsv['labelimage_oid'] = plugcsv['object_id']+1
             ## Filter plugs and assign to leaf
@@ -236,8 +244,16 @@ for folderpath in multifolderpath.glob("*_h5"):
             Summaryoutput['plug_id']=Summaryoutput['labelimage_oid'].map(plugleafdict)
             Summaryoutput['plug_centre']=Summaryoutput['plug_id'].map(plugcentredict)           
             
-            necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage)
-            necrosisimage[leafimage==0]=0
+            if 'Predicted Class' in necrosiscsv:
+                if 'Manual' in list(necrosiscsv['Predicted Class']) and overwritemanuals == False:
+                    a=1
+                else:
+                    necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage)
+                    necrosisimage[leafimage==0]=0
+            else:
+                necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage)
+                necrosisimage[leafimage==0]=0
+            
             for i in range(1,np.max(necrosisimage)+1):
                 leafid = np.unique(leafimage[necrosisimage==i])[0]
                 if not leafid in plugleafdict:
@@ -264,6 +280,7 @@ for folderpath in multifolderpath.glob("*_h5"):
                     Summaryoutput['necrosis_area'].loc[Summaryoutput['labelimage_oid']==leafid]=np.sum(necrosismask)
                     Summaryoutput['necrosis_distance'].loc[Summaryoutput['labelimage_oid']==leafid]=furthestdist
                     print("In "+filename+", necrosis "+str(i)+" was at distance " +str(furthestdist))
+            
             Summaryoutput['necrosis_leaffraction']=Summaryoutput['necrosis_area']/Summaryoutput['Object Area']
             Summaryoutput['necrosis_id']=Summaryoutput['labelimage_oid'].map(necrosisleafdict)
             
