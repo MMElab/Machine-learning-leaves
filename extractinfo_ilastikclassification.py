@@ -19,6 +19,7 @@ from pathlib import Path
 import collections
 import h5py
 from skimage import measure
+from tkinter import *
 
 ## Filters
 filterplugabsence = 2                   # Filters out all plugs in a dataset if x are missing (Default=2)
