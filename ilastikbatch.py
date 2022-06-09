@@ -10,7 +10,8 @@ This code is
 import subprocess
 from pathlib import Path
 import os
-
+from tkinter import *
+from tkinter.filedialog import askopenfilename
 
 def batchilastik(folder):
     ## choose whether pixel and/or object projects are run
@@ -109,7 +110,9 @@ def batchilastik(folder):
                     f"--prediction_maps={Necrosisfilename}"
                 ])
 
-multifolder = 'C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves\\Raw data\\3770'
+root = Tk()
+root.withdraw()
+multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
 for folder in multifolderpath.glob("*_h5"):
     batchilastik(folder)

@@ -23,7 +23,9 @@ import imutils
 sys.path.append('C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves')
 from Polygon import PolygonDrawer
 # Folder to correct (folder should contain subfolders for each day of the experiment) 
-multifolder = 'C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves\\Raw data\\3770'
+root = Tk()
+root.withdraw()
+multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
 
 # Number of leaves possible in image

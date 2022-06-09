@@ -114,11 +114,9 @@ def necrosisfinder(leafimage,necrosisprobabilityimage):
     return necrosismask
 
 # Load datafiles
-folder = 'C:/Users/vinkjo/Downloads/OneDrive_2022-03-17/230222 1 D0_h5/'
-folderpath = Path(folder)
-
-
-multifolder = 'C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves\\Raw data\\3770'
+root = Tk()
+root.withdraw()
+multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
 for folderpath in multifolderpath.glob("*_h5"):
     folder = str(folderpath)+'\\'
