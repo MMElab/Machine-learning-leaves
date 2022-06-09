@@ -20,6 +20,7 @@ import collections
 import h5py
 from skimage import measure
 from tkinter import *
+from tkinter import filedialog
 
 ## Filters
 filterplugabsence = 2                   # Filters out all plugs in a dataset if x are missing (Default=2)

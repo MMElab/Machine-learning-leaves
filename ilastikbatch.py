@@ -12,6 +12,7 @@ from pathlib import Path
 import os
 from tkinter import *
 from tkinter.filedialog import askopenfilename
+from tkinter import filedialog
 
 def batchilastik(folder):
     ## choose whether pixel and/or object projects are run

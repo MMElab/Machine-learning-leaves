@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import h5py
 from tkinter import *
 from tkinter.filedialog import askopenfilename
+from tkinter import filedialog
 import sys
 import imutils
 sys.path.append('C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves')
