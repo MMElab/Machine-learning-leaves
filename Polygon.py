@@ -18,13 +18,13 @@ CANVAS_SIZE = (600,800)
 
 class PolygonDrawer(object):
     
-    def __init__(self, window_name,image):
+    def __init__(self, window_name,image,necrosis=0):
         self.window_name = window_name # Name for our window
         self.image = image
         self.done = False # Flag signalling we're done
         self.current = (0, 0) # Current position, so we can draw the line-in-progress
         self.points = [] # List of points defining our polygon
-
+        self.necrosis = necrosis
 
     def on_mouse(self, event, x, y, buttons, user_param):
         # Mouse callback that gets called for every mouse event (i.e. moving, clicking, etc.)
@@ -43,7 +43,10 @@ class PolygonDrawer(object):
             # Right click means we're done
             print("Completing polygon with %d points." % len(self.points))
             self.done = True
-
+        
+        if (len(self.points)>1) & (self.necrosis == 1):
+            self.done = True
+            return
 
     def run(self):
         #Color

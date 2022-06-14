@@ -42,6 +42,55 @@ def draw_circle(event,x,y,flags,param):
         mouseX,mouseY = x,y
     return
 
+def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,manual=[]):
+    threshold = 0.6
+    contours = cv2.findContours(np.uint8(leafimage==leafnumber),cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
+    ellips= cv2.fitEllipse(contours[0][0])
+    image_center = ellips[0]
+    angle = ellips[2]
+    global rot_mat, rot_matinv
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    rot_matinv = cv2.getRotationMatrix2D(image_center, -angle, 1.0)
+    result = cv2.warpAffine(np.uint8(leafimage==leafnumber), rot_mat, leafimage.shape[1::-1], flags=cv2.INTER_LINEAR)
+    minvalue = np.min(np.where(result==1)[0])
+    maxvalue = np.max(np.where(result==1)[0])
+    if len(manual)>0:
+        startpoint = manual[0]
+        endpoint = manual[1]
+        startcoords = np.dot(rot_mat[0:2,0:2],startpoint)+rot_mat[:,2]
+        endcoords = np.dot(rot_mat[0:2,0:2],endpoint)+rot_mat[:,2]
+        start = int(np.max([0,np.min([startcoords[1],endcoords[1]])]))
+        end = int(np.max([startcoords[1],endcoords[1]]))
+        result[start:end]=2
+        resultrot = cv2.warpAffine(result,rot_matinv, leafimage.shape[1::-1], flags=cv2.WARP_FILL_OUTLIERS)   
+        resultrot[leafimage!=leafnumber]=0
+        resultrot[resultrot==1]=0
+        resultrot[resultrot==2]=1
+        necrosismask = resultrot
+    else:
+        segments = range(minvalue,maxvalue,int((maxvalue-minvalue)/50))
+        segmentmask = np.zeros(np.shape(leafimage))
+        coords = np.where(result==1)
+        for i in range(1,len(segments)):
+           segmentcoords = (coords[0][coords[0]>=segments[i-1]],coords[1][coords[0]>=segments[i-1]])
+           segmentmask[segmentcoords]=i
+        segmentmaskrot = cv2.warpAffine(segmentmask,rot_matinv, leafimage.shape[1::-1], flags=cv2.WARP_FILL_OUTLIERS)
+        necrosislist = list()
+        for i in range(1,len(segments)):
+            rotcoords = (segmentmaskrot==i)
+            avnecrosis = np.mean(necrosisprobabilityimage[rotcoords])
+            if avnecrosis > threshold:
+                necrosismask[rotcoords]=1
+                necrosislist.append(i)
+        for i in range(1,len(segments)):
+            if i not in necrosislist:
+                if (i+1 in necrosislist and i-1 in necrosislist) or (i+2 in necrosislist and i-2 in necrosislist):
+                    necrosislist.append(i)
+                    rotcoords = (segmentmaskrot==i)
+                    necrosismask[rotcoords]=1
+        necrosismask = measure.label(necrosismask)
+    return necrosismask
+
 def draw_plug(impath): 
     global img
     img = cv2.imread(impath)
@@ -210,20 +259,33 @@ def addorremoveobject(filein,filename,folder,auto):
         elif value == 'a':
             drawing = 1
             while drawing == 1:
-                print('draw Outline in Figure')
-                pdrun = PolygonDrawer('Drawingimage',im)
-                points = pdrun.run()
-                points = [np.flip(x) for x in np.array([points])[0]]
-                points = [np.array([x[0], 3024-x[1]]) for x in points]
-                
                 if 'labelimage_oid' in objectcsv.columns:
                     newnumber = next(i for i, e in enumerate(sorted(objectcsv['labelimage_oid']) + [ None ], 1) if i != e) 
                     object_id = next(i for i, e in enumerate(sorted(objectcsv['object_id']) + [ None ], 0) if i != e)                              
                 else:
                     newnumber = 1
                     object_id = 0
+                    
+                if value2 == 'n':
+                    print('draw start and end of necrosis')
+                    pdrun = PolygonDrawer('Drawingimage',im,1)
+                    points = pdrun.run()
+                    points = [np.flip(x) for x in np.array([points])[0]]
+                    points = [np.array([x[0], 3024-x[1]]) for x in points]
+                    #points = [np.array([3024-x[0], x[1]]) for x in points]
+                    leafnumber = np.max([leafimage[points[0][1],points[0][0]], leafimage[points[1][1],points[1][0]]])
+                    previousnecrosis = np.unique(necrosisimage[leafimage == leafnumber])
+                    newnecrosis = necrosisfinder(leafimage,0,leafnumber,0,points)
+                    globals()[objectname+'image'] = objectimage.copy()
+                    globals()[objectname+'image'][newnecrosis==1]=newnumber
+                else:    
                 
-                globals()[objectname+'image'] = cv2.fillPoly(objectimage.copy(), np.array([points]), newnumber)
+                    print('draw Outline in Figure')
+                    pdrun = PolygonDrawer('Drawingimage',im)
+                    points = pdrun.run()
+                    points = [np.flip(x) for x in np.array([points])[0]]
+                    points = [np.array([x[0], 3024-x[1]]) for x in points]
+                    globals()[objectname+'image'] = cv2.fillPoly(objectimage.copy(), np.array([points]), newnumber)
                 
                 if value2 == 'n' or value2 == 'p':
                     globals()[objectname+'image'][leafimage==0]=0
@@ -238,12 +300,17 @@ def addorremoveobject(filein,filename,folder,auto):
                 check = input('are you happy with the selected region(y/n)?')
                 cv2.destroyAllWindows()
                 if check == 'y':
+                    if value2 == 'n':
+                        for i in previousnecrosis:
+                            objectimage[objectimage==i]=0
+                            if 'labelimage_oid' in objectcsv.columns:
+                                 objectcsv.drop(objectcsv[objectcsv.labelimage_oid ==i].index)
                     objectimage = globals()[objectname+'image'].copy()
                     outpath = folder[:-4] + '_outlined_images\\' + filename + '.JPG'
                     drawOutlines(filein,outpath,leafimage,necrosisimage,petriimage,plugimage)
                     findcentre = objectimage.copy()
                     findcentre[findcentre!=newnumber]=0
-                    cnts = cv2.findContours(findcentre, cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+                    cnts = cv2.findContours(np.uint8(findcentre), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
                     cnts = imutils.grab_contours(cnts)
                     for i in cnts:
                         M = cv2.moments(i)
@@ -262,6 +329,7 @@ def addorremoveobject(filein,filename,folder,auto):
                 check = input('Do you want to select another region(y/n)?')
                 if check == 'n':
                     drawing = 0
+                    processimage = 'n'
                 
         else:
             processimage=input('Do you want to continue modifying this image (y/n)?')

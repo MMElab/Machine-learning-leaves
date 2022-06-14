@@ -79,19 +79,32 @@ def plugfinder(leafimage,plugprobabilityimage):
     return plugimage,plugcentredict,plugleafdict
 
 # Uses the average necrosis pixel probability in a leaf segment to monitor spread 
-def necrosisfinder(leafimage,necrosisprobabilityimage):
+def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,manual=[]):
     threshold = 0.6
-    necrosismask = np.zeros(np.shape(leafimage))
-    for i in range(1,np.max(leafimage)+1):
-        contours = cv2.findContours(np.uint8(leafimage==i),cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
-        ellips= cv2.fitEllipse(contours[0][0])
-        image_center = ellips[0]
-        angle = ellips[2]
-        rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
-        rot_matinv = cv2.getRotationMatrix2D(image_center, -angle, 1.0)
-        result = cv2.warpAffine(np.uint8(leafimage==i), rot_mat, leafimage.shape[1::-1], flags=cv2.INTER_LINEAR)
-        minvalue = np.min(np.where(result==1)[0])
-        maxvalue = np.max(np.where(result==1)[0])
+    contours = cv2.findContours(np.uint8(leafimage==leafnumber),cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
+    ellips= cv2.fitEllipse(contours[0][0])
+    image_center = ellips[0]
+    angle = ellips[2]
+    global rot_mat, rot_matinv
+    rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+    rot_matinv = cv2.getRotationMatrix2D(image_center, -angle, 1.0)
+    result = cv2.warpAffine(np.uint8(leafimage==leafnumber), rot_mat, leafimage.shape[1::-1], flags=cv2.INTER_LINEAR)
+    minvalue = np.min(np.where(result==1)[0])
+    maxvalue = np.max(np.where(result==1)[0])
+    if len(manual)>0:
+        startpoint = manual[0]
+        endpoint = manual[1]
+        startcoords = np.dot(rot_mat[0:2,0:2],startpoint)+rot_mat[:,2]
+        endcoords = np.dot(rot_mat[0:2,0:2],endpoint)+rot_mat[:,2]
+        start = int(np.max([0,np.min([startcoords[1],endcoords[1]])]))
+        end = int(np.max([startcoords[1],endcoords[1]]))
+        result[start:end]=2
+        resultrot = cv2.warpAffine(result,rot_matinv, leafimage.shape[1::-1], flags=cv2.WARP_FILL_OUTLIERS)   
+        resultrot[leafimage!=leafnumber]=0
+        resultrot[resultrot==1]=0
+        resultrot[resultrot==2]=1
+        necrosismask = resultrot
+    else:
         segments = range(minvalue,maxvalue,int((maxvalue-minvalue)/50))
         segmentmask = np.zeros(np.shape(leafimage))
         coords = np.where(result==1)
@@ -112,7 +125,7 @@ def necrosisfinder(leafimage,necrosisprobabilityimage):
                     necrosislist.append(i)
                     rotcoords = (segmentmaskrot==i)
                     necrosismask[rotcoords]=1
-    necrosismask = measure.label(necrosismask)
+        necrosismask = measure.label(necrosismask)
     return necrosismask
 
 # Load datafiles
@@ -248,11 +261,15 @@ for folderpath in multifolderpath.glob("*_h5"):
                 if 'Manual' in list(necrosiscsv['Predicted Class']) and overwritemanuals == False:
                     a=1
                 else:
-                    necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage)
-                    necrosisimage[leafimage==0]=0
+                    necrosisimage = np.zeros(np.shape(leafimage))
+                    for leafnumber in range(1,np.max(leafimage)+1):
+                        necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
+                        necrosisimage[leafimage==0]=0
             else:
-                necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage)
-                necrosisimage[leafimage==0]=0
+                necrosisimage = np.zeros(np.shape(leafimage))
+                for leafnumber in range(1,np.max(leafimage)+1):
+                    necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
+                    necrosisimage[leafimage==0]=0
             
             for i in range(1,np.max(necrosisimage)+1):
                 leafid = np.unique(leafimage[necrosisimage==i])[0]
