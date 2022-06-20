@@ -148,8 +148,13 @@ for folderpath in multifolderpath.glob("*_h5"):
         petricsv = pd.read_csv(petrifilename)
         if len(petricsv)>1:
             petricsv = petricsv.loc[petricsv['Size in pixels']==petricsv['Size in pixels'].max()]  
-        petriradius = (petricsv['Radii of the object_1'][0]+petricsv['Radii of the object_0'][0])/2
-        petrisize =petricsv['Size in pixels'][0]
+        if len(petricsv)>0:
+            petriradius = (petricsv['Radii of the object_1'][0]+petricsv['Radii of the object_0'][0])/2
+            petrisize =petricsv['Size in pixels'][0]
+        else:
+             petriradius = 1000
+             petrisize = 1000
+    
         petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
         petriimage = np.squeeze(np.load(petriimagefilename))
         petriimage[petriimage!=int(petricsv['labelimage_oid'])]=0
