@@ -149,8 +149,8 @@ for folderpath in multifolderpath.glob("*_h5"):
         if len(petricsv)>1:
             petricsv = petricsv.loc[petricsv['Size in pixels']==petricsv['Size in pixels'].max()]  
         if len(petricsv)>0:
-            petriradius = (petricsv['Radii of the object_1'][0]+petricsv['Radii of the object_0'][0])/2
-            petrisize =petricsv['Size in pixels'][0]
+            petriradius = (list(petricsv['Radii of the object_1'])[0]+list(petricsv['Radii of the object_0'])[0])/2
+            petrisize =list(petricsv['Size in pixels'])[0]
         else:
              petriradius = 1000
              petrisize = 1000
