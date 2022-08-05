@@ -190,14 +190,18 @@ for folderpath in multifolderpath.glob("*_h5"):
         
         if not os.path.isdir(folder +'Objects_petri/'):
             os.mkdir(folder +'Objects_petri/')
-        if not os.path.exists(petrifilename):
-            petricsv =  leafcsv[0:0]
-            petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
-        else:    
-            petricsv = pd.read_csv(petrifilename)
-            plugimage = np.squeeze(np.load(petriimagefilename))
-        petricsv = pd.read_csv(petrifilename)
+        petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
+        petricsv =  leafcsv[0:0]
         petrisize = np.sum(petriimage)
+        petricsv = petricsv.append(pd.Series(),ignore_index=True)
+        petricsv['object_id'].iloc[0]=0
+        petricsv['labelimage_oid'].iloc[0] = 1
+        petricsv['Predicted Class'].iloc[0]='Automatic'
+        petricsv['Center of the object_0'].iloc[0]=a
+        petricsv['Center of the object_1'].iloc[0]=b
+        petricsv['Size in pixels'].iloc[0]=np.sum(petriimage==1)
+        petricsv['Radii of the object_1']=petriradius
+        petricsv['Radii of the object_0']=petriradius
         
         # Plug data
         plugcsvfilename = folder +'Objects_plug/'+filename+'.JPG_table.csv'
