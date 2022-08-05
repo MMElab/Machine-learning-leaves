@@ -163,28 +163,6 @@ for folderpath in multifolderpath.glob("*_h5"):
         filename = filename[:-7]
         
         # Loading all the ilastik generated datafiles:
-        # Petri data
-        petrifilename = folder +'Objects_petri/'+filename+'.JPG_table.csv'
-        petricsv = pd.read_csv(petrifilename)
-        if len(petricsv)>1:
-            petricsv = petricsv.loc[petricsv['Size in pixels']==petricsv['Size in pixels'].max()]  
-        if len(petricsv)>0:
-            petriradius = (list(petricsv['Radii of the object_1'])[0]+list(petricsv['Radii of the object_0'])[0])/2
-            petrisize =list(petricsv['Size in pixels'])[0]
-        else:
-             petriradius = 1000
-             petrisize = 1000
-             
-        petriprobabilityimage = h5py.File(folder +'Pixelprobabilities_petri/'+filename+'.JPG_Probabilities.h5')
-        petriprobabilityimage = np.squeeze(petriprobabilityimage['exported_data'])[:,:,0]
-        petricsv
-        petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
-        petrisize = np.sum(petriimage)
-        
-        petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
-        #petriimage = np.squeeze(np.load(petriimagefilename))
-        #petriimage[petriimage!=int(petricsv['labelimage_oid'])]=0
-        
         # Leaf data
         leafcsvfilename = folder +'Objects_leaf/'+filename+'.JPG_table.csv'
         leafcsv = pd.read_csv(leafcsvfilename)
@@ -203,6 +181,23 @@ for folderpath in multifolderpath.glob("*_h5"):
                     removeindex = i
             leafcsv.drop(leafcsv.loc[leafcsv['labelimage_oid']==removeindex].index)
             leafimage[leafimage==removeindex]=0
+            
+       # Petri data
+        petriprobabilityimage = h5py.File(folder +'Pixelprobabilities_petri/'+filename+'.JPG_Probabilities.h5')
+        petriprobabilityimage = np.squeeze(petriprobabilityimage['exported_data'])[:,:,0]
+        petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
+        petrifilename = folder +'Objects_petri/'+filename+'.JPG_table.csv'
+        
+        if not os.path.isdir(folder +'Objects_petri/'):
+            os.mkdir(folder +'Objects_petri/')
+        if not os.path.exists(petrifilename):
+            petricsv =  leafcsv[0:0]
+            petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
+        else:    
+            petricsv = pd.read_csv(petrifilename)
+            plugimage = np.squeeze(np.load(petriimagefilename))
+        petricsv = pd.read_csv(petrifilename)
+        petrisize = np.sum(petriimage)
         
         # Plug data
         plugcsvfilename = folder +'Objects_plug/'+filename+'.JPG_table.csv'
@@ -212,7 +207,7 @@ for folderpath in multifolderpath.glob("*_h5"):
         if not os.path.isdir(folder +'Objects_plug/'):
             os.mkdir(folder +'Objects_plug/')
         if not os.path.exists(plugcsvfilename):
-            plugcsv =  petricsv[0:0]
+            plugcsv =  leafcsv[0:0]
             plugimage = np.zeros(np.shape(petriimage))
         else:    
             plugcsv = pd.read_csv(plugcsvfilename)
@@ -230,7 +225,7 @@ for folderpath in multifolderpath.glob("*_h5"):
         if not os.path.isdir(folder +'Objects_necrosis/'):
             os.mkdir(folder +'Objects_necrosis/')
         if not os.path.exists(necrosiscsvfilename):
-            necrosiscsv =  petricsv[0:0]
+            necrosiscsv =  leafcsv[0:0]
             necrosisimage = np.zeros(np.shape(petriimage))
         else:    
             necrosiscsv = pd.read_csv(necrosiscsvfilename)
