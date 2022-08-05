@@ -23,18 +23,13 @@ import sys
 import imutils
 sys.path.append('C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves')
 from Polygon import PolygonDrawer
-# Folder to correct (folder should contain subfolders for each day of the experiment) 
-root = Tk()
-root.withdraw()
-multifolder = filedialog.askdirectory()
-multifolderpath = Path(multifolder)
 
 # Number of leaves possible in image
 amountofleaves = [3,5]
 
 # Functions
-# Draws plug around centre that you click on in the image with radius size specified (Default 40)
-radius = 40
+# Draws plug around centre that you click on in the image with radius size specified (Default 50)
+radius = 50
 def draw_circle(event,x,y,flags,param):
     global mouseX,mouseY
     if event == cv2.EVENT_LBUTTONDBLCLK:
@@ -272,14 +267,28 @@ def addorremoveobject(filein,filename,folder,auto):
                     points = pdrun.run()
                     points = [np.flip(x) for x in np.array([points])[0]]
                     points = [np.array([x[0], 3024-x[1]]) for x in points]
-                    #points = [np.array([3024-x[0], x[1]]) for x in points]
                     leafnumber = np.max([leafimage[points[0][1],points[0][0]], leafimage[points[1][1],points[1][0]]])
                     previousnecrosis = np.unique(necrosisimage[leafimage == leafnumber])
                     newnecrosis = necrosisfinder(leafimage,0,leafnumber,0,points)
                     globals()[objectname+'image'] = objectimage.copy()
                     globals()[objectname+'image'][newnecrosis==1]=newnumber
-                else:    
-                
+                    globals()[objectname+'image'][leafimage==0]=0
+                elif value2 == 'p':
+                    print('Double click on the plug and press y to save')
+                    print('Press n if you made a mistake and want to start over')
+                    print('If you are finished with an image press q')
+                    
+                    impath = str(folder)[:-4]+'_outlined_images\\'+filename+'.JPG'
+                    pluglist = draw_plug(impath)
+                    
+                    for i in pluglist:
+                        coordinates = i
+                        coordinates[0] = np.size(plugimage,axis=0)-coordinates[0]
+                        leaf = leafimage[coordinates[0],coordinates[1]]
+                        plugs = np.unique(plugimage[leafimage==leaf])
+                        oldplugs = plugs[plugs>0]
+                        globals()[objectname+'image'][skimage.draw.disk((coordinates[0],coordinates[1]), radius=radius)]=newnumber
+                else:
                     print('draw Outline in Figure')
                     pdrun = PolygonDrawer('Drawingimage',im)
                     points = pdrun.run()
@@ -287,13 +296,10 @@ def addorremoveobject(filein,filename,folder,auto):
                     points = [np.array([x[0], 3024-x[1]]) for x in points]
                     globals()[objectname+'image'] = cv2.fillPoly(objectimage.copy(), np.array([points]), newnumber)
                 
-                if value2 == 'n' or value2 == 'p':
-                    globals()[objectname+'image'][leafimage==0]=0
-                    
                 im = drawOutlines_display(filein,leafimage,necrosisimage,petriimage,plugimage)
                 cv2.namedWindow('Converted_image',cv2.WINDOW_NORMAL)
                 cv2.imshow('Converted_image',im)
-                k = cv2.waitKey(3000)
+                k = cv2.waitKey(20000)
                 cv2.destroyAllWindows()
                 plt.imshow(im)
                 plt.show()
@@ -305,6 +311,11 @@ def addorremoveobject(filein,filename,folder,auto):
                             objectimage[objectimage==i]=0
                             if 'labelimage_oid' in objectcsv.columns:
                                  objectcsv.drop(objectcsv[objectcsv.labelimage_oid ==i].index)
+                    if value2 == 'p':
+                        for i in oldplugs:
+                            objectimage[objectimage==i]=0
+                            if 'labelimage_oid' in objectcsv.columns:
+                                objectcsv.drop(objectcsv[objectcsv.labelimage_oid ==i].index)
                     objectimage = globals()[objectname+'image'].copy()
                     outpath = folder[:-4] + '_outlined_images\\' + filename + '.JPG'
                     drawOutlines(filein,outpath,leafimage,necrosisimage,petriimage,plugimage)
@@ -316,11 +327,11 @@ def addorremoveobject(filein,filename,folder,auto):
                         M = cv2.moments(i)
                         cX = int(M["m10"] / M["m00"])
                         cY = int(M["m01"] / M["m00"])
-                    
+                        c, R = cv2.minEnclosingCircle(i)
                     objectcsvfilename = folder +'Objects_'+objectname+'/'+filename+'.JPG_table.csv'
                     objectimagefilename = folder +'Objects_'+objectname+'/'+filename+'.JPG_Object Identities.npy'
                     np.save(objectimagefilename,objectimage)
-                    newentry = {'Predicted Class': 'Manual','object_id':object_id,'labelimage_oid': newnumber,'Size in pixels': np.sum(objectimage==newnumber), 'Object Area': np.sum(objectimage==newnumber), 'Center of the object_0': cX, 'Center of the object_1': cY}
+                    newentry = {'Predicted Class': 'Manual','object_id':object_id,'labelimage_oid': newnumber,'Size in pixels': np.sum(objectimage==newnumber), 'Object Area': np.sum(objectimage==newnumber), 'Center of the object_0': cX, 'Center of the object_1': cY,'Radii of the object_1': R, 'Radii of the object_0': R}
                     objectcsv = objectcsv.append(newentry,ignore_index=True)
                     objectcsv.to_csv(objectcsvfilename,index=False)
                 elif check == 'n':
@@ -335,7 +346,13 @@ def addorremoveobject(filein,filename,folder,auto):
             processimage=input('Do you want to continue modifying this image (y/n)?')
     return
 
-
+# Folder to correct (folder should contain subfolders for each day of the experiment) 
+root = Tk()
+root.attributes('-topmost',True)
+root.update()
+root.withdraw()
+multifolder = filedialog.askdirectory()
+multifolderpath = Path(multifolder)
 
 ## Select whether you want to automatically detect images with incorrect number of leaves and fix
 value = input("Do you want to fix leaves? (y/n)")
@@ -373,6 +390,7 @@ elif value == 'n':
 elif value == 'y':
     print(f'You entered {value}')
     plug = 1
+
 if plug == 1:
     print('Double click on the plug and press y to save')
     print('Press n if you made a mistake and want to start over')
@@ -383,7 +401,6 @@ if plug == 1:
                 filename = os.path.basename(datafile['filename'][0])
                 numberofleaves = len(datafile)
                 plugcsvfilename = str(folderpath) +'/Objects_plug/'+filename+'.JPG_table.csv'
-                oldplugcsvfilename = str(folderpath) +'/Objects_plug_old/'+filename+'.JPG_table.csv'
                 plugcsv = pd.read_csv(plugcsvfilename)
                 if 'object_id' in plugcsv.keys():
                     numberofplugs=np.sum(plugcsv['object_id'].notna())
@@ -392,9 +409,13 @@ if plug == 1:
                         pluglist = draw_plug(impath)
                         plugimagefilename = str(folderpath) +'/Objects_plug/'+filename+'.JPG_Object Identities.npy'
                         plugimage = np.squeeze(np.load(plugimagefilename))
+                        leafimagefilename = str(folderpath) +'/Objects_leaf/'+filename+'.JPG_Object Identities.npy'
+                        leafimage = np.squeeze(np.load(leafimagefilename))
+                        
                         for i in pluglist:
                             coordinates = i
                             coordinates[0] = np.size(plugimage,axis=0)-coordinates[0]
+                            plugleafdict[i]=leafimage[coordinates[0],coordinates[1]]                            
                             #i[1] = np.size(plugimage,axis=1)-i[1]
                             newplugid = max(plugcsv['object_id'])+1
                             plugcsv = plugcsv.append(pd.Series(),ignore_index=True)
@@ -417,6 +438,7 @@ while processmultiple == 1:
         #print(f'You entered {value}, which is not y or n')
         print('Select the file you want to fix')
         root = Tk()
+        root.attributes('-topmost',True)
         root.withdraw()
         root.update()
         filein = askopenfilename()

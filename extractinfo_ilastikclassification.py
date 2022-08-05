@@ -27,7 +27,12 @@ filterplugabsence = 2                   # Filters out all plugs in a dataset if 
 filterminimumnecrosis = 15000           # Minimum area that necrosis needs to be to be considered (Area minus plug) Default = 10000
 filterminimumdistancenecrosis = -100    # Minimum distance of necrosis to plug (So filters out far away areas) Default = -100
 maxleaves = 5                           # Filters out lowest probability leaves if more leaves are present than expected
-overwritemanuals = True                 # If overwrite manuals equals True then the manual repair that was performed on this dataset will be removed
+
+value=input('Do you want to overwrite previous necrosis and plug determinations(y/n)?')
+if value == 'y':
+    overwritemanuals = True                 # If overwrite manuals equals True then the manual repair that was performed on this dataset will be removed
+else:
+    overwritemanuals = False 
 
 ## Functions
 # Finds the closest and furthest point based on a skeleton
@@ -48,7 +53,7 @@ def closestandfurthestpoints(skeleton,point):
 # Draws outlines of the plug,petridish,leaf and necrosis in the original image
 def drawOutlines(impath,outpath,leafimage,necrosisimage,petriimage,plugimage):
     im = cv2.imread(impath)
-    cv2.imshow('image',im)
+    #cv2.imshow('image',im)
     contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     for i in contours:
         cv2.drawContours(im,i,-1,(0,255,0),thickness=5)
@@ -78,6 +83,18 @@ def plugfinder(leafimage,plugprobabilityimage):
         plugimage = cv2.circle(plugimage,(centre[1][0],centre[0][0]),radius,i,-1)
     return plugimage,plugcentredict,plugleafdict
 
+def petrifinder(petriprobabilityimage):
+    petriuint8 = cv2.blur(petriprobabilityimage, (50, 50))
+    petriuint8 = np.uint8(petriuint8*300)
+    detected_circles = cv2.HoughCircles(petriuint8,cv2.HOUGH_GRADIENT, 1.5, 3000, param1 = 50,param2 = 30, minRadius = 1000, maxRadius = 2000)
+    petriimage = np.zeros(np.shape(petriuint8))
+    a = int(detected_circles[0][0][0])
+    b = int(detected_circles[0][0][1])
+    r = int(detected_circles[0][0][2])
+    petriimage = cv2.circle(petriimage,(a,b),r,1,-1)
+    return petriimage,a,b,r
+    
+    
 # Uses the average necrosis pixel probability in a leaf segment to monitor spread 
 def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,manual=[]):
     threshold = 0.6
@@ -130,6 +147,9 @@ def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,
 
 # Load datafiles
 root = Tk()
+root.lift()
+root.attributes('-topmost',True)
+root.after_idle(root.attributes,'-topmost',False)
 root.withdraw()
 multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
@@ -154,10 +174,16 @@ for folderpath in multifolderpath.glob("*_h5"):
         else:
              petriradius = 1000
              petrisize = 1000
-    
+             
+        petriprobabilityimage = h5py.File(folder +'Pixelprobabilities_petri/'+filename+'.JPG_Probabilities.h5')
+        petriprobabilityimage = np.squeeze(petriprobabilityimage['exported_data'])[:,:,0]
+        petricsv
+        petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
+        petrisize = np.sum(petriimage)
+        
         petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
-        petriimage = np.squeeze(np.load(petriimagefilename))
-        petriimage[petriimage!=int(petricsv['labelimage_oid'])]=0
+        #petriimage = np.squeeze(np.load(petriimagefilename))
+        #petriimage[petriimage!=int(petricsv['labelimage_oid'])]=0
         
         # Leaf data
         leafcsvfilename = folder +'Objects_leaf/'+filename+'.JPG_table.csv'
@@ -166,6 +192,8 @@ for folderpath in multifolderpath.glob("*_h5"):
         leafimage = np.squeeze(np.load(leafimagefilename))
         leafprobabilityimage = h5py.File(folder +'Pixelprobabilities_leaf/'+filename+'.JPG_Probabilities.h5')
         leafprobabilityimage = np.squeeze(leafprobabilityimage['exported_data'])[:,:,0]
+        
+        # Filter out more than x amount of leaves
         if len(leafcsv)>maxleaves:
             sumprob = 10000000
             for i in leafcsv['labelimage_oid']:
@@ -178,22 +206,40 @@ for folderpath in multifolderpath.glob("*_h5"):
         
         # Plug data
         plugcsvfilename = folder +'Objects_plug/'+filename+'.JPG_table.csv'
-        plugcsv = pd.read_csv(plugcsvfilename)
         plugimagefilename = folder +'Objects_plug/'+filename+'.JPG_Object Identities.npy'
-        plugimage = np.squeeze(np.load(plugimagefilename))
-        plugimage[leafimage==0]=0
+        
+        # If folder or files don't exist, create them
+        if not os.path.isdir(folder +'Objects_plug/'):
+            os.mkdir(folder +'Objects_plug/')
+        if not os.path.exists(plugcsvfilename):
+            plugcsv =  petricsv[0:0]
+            plugimage = np.zeros(np.shape(petriimage))
+        else:    
+            plugcsv = pd.read_csv(plugcsvfilename)
+            plugimage = np.squeeze(np.load(plugimagefilename))
+            plugimage[leafimage==0]=0
+        
         plugprobabilityimage = h5py.File(folder +'Pixelprobabilities_plug/'+filename+'.JPG_Probabilities.h5')
         plugprobabilityimage = np.squeeze(plugprobabilityimage['exported_data'])[:,:,1]
         
         #Necrosis data
         necrosiscsvfilename = folder +'Objects_necrosis/'+filename+'.JPG_table.csv'
-        necrosiscsv = pd.read_csv(necrosiscsvfilename)
         necrosisimagefilename = folder +'Objects_necrosis/'+filename+'.JPG_Object Identities.npy'
-        necrosisimage = np.squeeze(np.load(necrosisimagefilename))
-        necrosisimage[leafimage==0]=0
+        
+        # If folder or files don't exist, create them
+        if not os.path.isdir(folder +'Objects_necrosis/'):
+            os.mkdir(folder +'Objects_necrosis/')
+        if not os.path.exists(necrosiscsvfilename):
+            necrosiscsv =  petricsv[0:0]
+            necrosisimage = np.zeros(np.shape(petriimage))
+        else:    
+            necrosiscsv = pd.read_csv(necrosiscsvfilename)
+            necrosisimage = np.squeeze(np.load(necrosisimagefilename))
+            necrosisimage[leafimage==0]=0
+        
         necrosisprobabilityimage = h5py.File(folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
         necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,1]
-        numberofleaves=leafimage.max()
+        numberofleaves= len(np.unique(leafimage))-1
     
     
     # Intiliaze     
@@ -213,9 +259,19 @@ for folderpath in multifolderpath.glob("*_h5"):
         plugleafdict = dict()
         plugcentredict = dict()
         
+        # Detect plugs
         if 'labelimage_oid' in plugcsv:
             if 'Manual' in list(plugcsv['Predicted Class']) and overwritemanuals == False:
-                a = 1
+                for i in plugcsv.labelimage_oid:
+                   plugcentre = plugcsv[['Center of the object_0','Center of the object_1']].loc[plugcsv['labelimage_oid']==i]
+                   plugcentre = [plugcentre.iloc[0][0],plugcentre.iloc[0][1]]
+                   plugcentredict[i] = plugcentre 
+                   if np.sum(plugimage==i)==0:
+                           plugcsv = plugcsv[plugcsv.labelimage_oid != i]
+                           continue
+                   leafid = np.unique(leafimage[plugimage==i])[0]
+                   plugleafdict[np.unique(leafimage[plugimage==i])[0]] = i
+                   
             else:
                 plugcsv = plugcsv[0:0]
                 plugimage,plugcentredict,plugleafdict= plugfinder(leafimage,plugprobabilityimage)
@@ -262,6 +318,7 @@ for folderpath in multifolderpath.glob("*_h5"):
             Summaryoutput['plug_id']=Summaryoutput['labelimage_oid'].map(plugleafdict)
             Summaryoutput['plug_centre']=Summaryoutput['plug_id'].map(plugcentredict)           
             
+            
             if 'Predicted Class' in necrosiscsv:
                 if 'Manual' in list(necrosiscsv['Predicted Class']) and overwritemanuals == False:
                     a=1
@@ -276,6 +333,7 @@ for folderpath in multifolderpath.glob("*_h5"):
                     necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
                     necrosisimage[leafimage==0]=0
             
+            counter = 0
             for i in range(1,np.max(necrosisimage)+1):
                 leafid = np.unique(leafimage[necrosisimage==i])[0]
                 if not leafid in plugleafdict:
@@ -296,53 +354,29 @@ for folderpath in multifolderpath.glob("*_h5"):
                     print("In "+filename+", necrosis "+str(i)+" was removed, too small area")
                     necrosisimage[necrosisimage==i]=0
                 else: 
+                    necrosiscsv = necrosiscsv.append(pd.Series(),ignore_index=True)
+                    necrosiscsv['object_id'].iloc[counter]=counter
+                    necrosiscsv['labelimage_oid'].iloc[counter] = i
+                    necrosiscsv['Predicted Class'].iloc[counter]='Automatic'
+                    necrosiscsv['Size in pixels'].iloc[counter]=np.sum(necrosisimage==i)
                     closest,furthest,closestdist,furthestdist = closestandfurthestpoints(necrosismask,plugcentre)
                     necrosisleafdict[leafid]=i
                     necrosismask[plugimage==plugid]=True
+                    counter = counter+1        
                     Summaryoutput['necrosis_area'].loc[Summaryoutput['labelimage_oid']==leafid]=np.sum(necrosismask)
                     Summaryoutput['necrosis_distance'].loc[Summaryoutput['labelimage_oid']==leafid]=furthestdist
                     print("In "+filename+", necrosis "+str(i)+" was at distance " +str(furthestdist))
-            
+                    
+                
             Summaryoutput['necrosis_leaffraction']=Summaryoutput['necrosis_area']/Summaryoutput['Object Area']
             Summaryoutput['necrosis_id']=Summaryoutput['labelimage_oid'].map(necrosisleafdict)
             
-            # if 'labelimage_oid' in necrosiscsv:
-            #     for i in necrosiscsv.labelimage_oid:
-            #         if np.sum(necrosisimage==i)==0:
-            #             necrosiscsv = necrosiscsv[necrosiscsv.labelimage_oid != i]
-            #             continue
-            #         leafid = np.unique(leafimage[necrosisimage==i])[0]
-            #         if not leafid in plugleafdict:
-            #             print("In "+filename+", necrosis "+str(i)+" was removed, no plug in leaf")
-            #             necrosisimage[necrosisimage==i]=0
-            #             continue
-            #         plugid = plugleafdict[leafid]
-            #         plugcentre = plugcentredict[plugid]
-            #         necrosismask = np.isin(necrosisimage,i)
-            #         contours, hierarchy = cv2.findContours(np.uint8(necrosismask), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            #         closestDist = cv2.pointPolygonTest(contours[0], plugcentre, True)
-            #         necrosismaskminplug = necrosismask
-            #         necrosismaskminplug[plugimage==plugid]=False
-            #         if closestDist<filterminimumdistancenecrosis:
-            #             print("In "+filename+", necrosis "+str(i)+" was removed, too far from plug")
-            #             necrosisimage[necrosisimage==i]=0
-            #         elif np.sum(necrosismaskminplug)<filterminimumnecrosis:
-            #             print("In "+filename+", necrosis "+str(i)+" was removed, too small area")
-            #             necrosisimage[necrosisimage==i]=0
-            #         else: 
-            #             closest,furthest,closestdist,furthestdist = closestandfurthestpoints(necrosismask,plugcentre)
-            #             necrosisleafdict[leafid]=i
-            #             necrosismask[plugimage==plugid]=True
-            #             Summaryoutput['necrosis_area'].loc[Summaryoutput['labelimage_oid']==leafid]=np.sum(necrosismask)
-            #             Summaryoutput['necrosis_distance'].loc[Summaryoutput['labelimage_oid']==leafid]=furthestdist
-            #             print("In "+filename+", necrosis "+str(i)+" was at distance " +str(furthestdist))
-            # Summaryoutput['necrosis_leaffraction']=Summaryoutput['necrosis_area']/Summaryoutput['Object Area']
-            # Summaryoutput['necrosis_id']=Summaryoutput['labelimage_oid'].map(necrosisleafdict)
         else:
             print(filename+' has no plugs')
             necrosisimage[necrosisimage>0] = 0
             plugimage[plugimage>0] = 0
 
+        # Write output
         impath = folder[:-4] + '\\' + filename + '.JPG'
         outpath = folder[:-4] + '_outlined_images\\' + filename + '.JPG'
         if not os.path.isdir(folder[:-4] + '_outlined_images\\'):
