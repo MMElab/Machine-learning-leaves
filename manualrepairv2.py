@@ -255,12 +255,12 @@ def addorremoveobject(filein,filename,folder,auto):
             drawing = 1
             while drawing == 1:
                 if 'labelimage_oid' in objectcsv.columns:
-                    newnumber = next(i for i, e in enumerate(sorted(objectcsv['labelimage_oid']) + [ None ], 1) if i != e) 
                     object_id = next(i for i, e in enumerate(sorted(objectcsv['object_id']) + [ None ], 0) if i != e)                              
                 else:
-                    newnumber = 1
                     object_id = 0
-                    
+                newnumber = np.max(objectimage)+1
+                
+                
                 if value2 == 'n':
                     print('draw start and end of necrosis')
                     pdrun = PolygonDrawer('Drawingimage',im,1)
@@ -296,6 +296,14 @@ def addorremoveobject(filein,filename,folder,auto):
                     points = [np.array([x[0], 3024-x[1]]) for x in points]
                     globals()[objectname+'image'] = cv2.fillPoly(objectimage.copy(), np.array([points]), newnumber)
                 
+                if value2 == 'n':
+                    for i in previousnecrosis:
+                        globals()[objectname+'image'][globals()[objectname+'image']==i]=0
+                if value2 == 'p':
+                    for i in oldplugs:
+                        globals()[objectname+'image'][globals()[objectname+'image']==i]=0
+
+                            
                 im = drawOutlines_display(filein,leafimage,necrosisimage,petriimage,plugimage)
                 cv2.namedWindow('Converted_image',cv2.WINDOW_NORMAL)
                 cv2.imshow('Converted_image',im)
@@ -306,17 +314,16 @@ def addorremoveobject(filein,filename,folder,auto):
                 check = input('are you happy with the selected region(y/n)?')
                 cv2.destroyAllWindows()
                 if check == 'y':
+                    objectimage = globals()[objectname+'image'].copy()
                     if value2 == 'n':
                         for i in previousnecrosis:
-                            objectimage[objectimage==i]=0
                             if 'labelimage_oid' in objectcsv.columns:
                                  objectcsv.drop(objectcsv[objectcsv.labelimage_oid ==i].index)
                     if value2 == 'p':
                         for i in oldplugs:
-                            objectimage[objectimage==i]=0
                             if 'labelimage_oid' in objectcsv.columns:
                                 objectcsv.drop(objectcsv[objectcsv.labelimage_oid ==i].index)
-                    objectimage = globals()[objectname+'image'].copy()
+                                
                     outpath = folder[:-4] + '_outlined_images\\' + filename + '.JPG'
                     drawOutlines(filein,outpath,leafimage,necrosisimage,petriimage,plugimage)
                     findcentre = objectimage.copy()
