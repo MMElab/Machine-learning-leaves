@@ -17,12 +17,12 @@ from tkinter import filedialog
 def batchilastik(folder):
     ## choose whether pixel and/or object projects are run
     pixel = 1
-    objectname = 1
+    objectname = 0
     ## choose for which kind of part of the analysis is run
-    petri = 1
+    petri = 0
     plug = 1
     necrosis = 1
-    leaf = 1
+    leaf = 0
     
     for filein in folder.glob("*.h5"):
         filename = os.path.basename(filein)
@@ -34,7 +34,7 @@ def batchilastik(folder):
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\vinkjo\\Petridish_pixel.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Petridish_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
@@ -43,7 +43,7 @@ def batchilastik(folder):
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\vinkjo\\Plug_pixel.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Plug_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
@@ -52,7 +52,7 @@ def batchilastik(folder):
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\vinkjo\\Necrosis_pixel.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Necrosis_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
@@ -61,7 +61,7 @@ def batchilastik(folder):
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\vinkjo\\Leaf_pixel.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Leaf_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
@@ -72,7 +72,7 @@ def batchilastik(folder):
                 subprocess.run([
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\vinkjo\\Petridish_object_compacted.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Petridish_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Petrifilename}"
@@ -83,7 +83,7 @@ def batchilastik(folder):
                 subprocess.run([
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\vinkjo\\Plug_object_compacted.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Plug_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Plugfilename}"
@@ -94,7 +94,7 @@ def batchilastik(folder):
                 subprocess.run([
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\vinkjo\\Leaf_object_compacted.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Leaf_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Leaffilename}"
@@ -105,7 +105,7 @@ def batchilastik(folder):
                 subprocess.run([
                     "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\vinkjo\\Necrosis_object_compacted.ilp",
+                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Necrosis_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Necrosisfilename}"

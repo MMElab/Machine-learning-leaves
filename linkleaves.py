@@ -11,13 +11,17 @@ import os
 from pathlib import Path
 import re
 from scipy.optimize import linear_sum_assignment
+from tkinter import filedialog
 
 # Load datafiles
 maxleafdifference = 200
 petriradius = 75
 
 # Specify folder path (usual structure is multifolderpath/Experiment_DX_h5)
-multifolder = 'C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves\\Raw data\\3770'
+# multifolder = 'C:\\Users\\vinkjo\\OneDrive - Victoria University of Wellington - STAFF\\Desktop\\Machine learning Leaves\\Raw data\\3770'
+# multifolderpath = Path(multifolder)
+
+multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
 originalfolderpath = list(multifolderpath.glob("*D0_h5"))[0]
 combineddatafile = pd.DataFrame()
@@ -48,8 +52,9 @@ for folderpath in multifolderpath.glob("*_h5"):
 # Match leaves from different frames based on size       
         bestpartnerdict = dict()
         leaflinkdict = dict()
-        distanceleafsizes=np.full((20,20),10000)
-        leaflinkarray=np.full((20,20),dict())
+        numberofimages = len(Sumtot)
+        distanceleafsizes=np.full((numberofimages,numberofimages),10000)
+        leaflinkarray=np.full((numberofimages,numberofimages),dict())
         for j,k in enumerate(Sumtot[3]):
             sortedsizes= np.sort(k)
             sortedindices = np.argsort(k)
@@ -90,7 +95,7 @@ for folderpath in multifolderpath.glob("*_h5"):
             filename = os.path.basename(datafile['filename'][0])
             location = np.where(Sumtot[0].str.contains(filename))[0][0]
             datafile['filename_original']=Sumtot_original.iloc[bestpartnerdict[location]][0]
-            day = int(re.search(" D(.*)_h5", str(filein))[0][2:-3])
+            day = int(re.search("D(.{1,2})_h5", str(filein))[0][1:-3])
             leafdict = leaflinkdict[location]
             if len(leafdict)>0:
                 if len(datafile)==3 or len(datafile)==5:

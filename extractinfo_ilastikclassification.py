@@ -75,12 +75,13 @@ def plugfinder(leafimage,plugprobabilityimage):
     plugleafdict = dict()
     blur = cv2.GaussianBlur(plugprobabilityimage,(radius*2+1,radius*2+1),radius)
     plugimage = np.zeros(np.shape(leafimage))
-    for i in range(1,np.max(leafimage)+1):
+    leafindexes = np.unique(leafimage[leafimage!=0])
+    for i in leafindexes:
         maxvalue = np.max(blur[leafimage==i])
         centre = np.where(blur==maxvalue)
-        plugcentredict[i]=[int(centre[1][0]),int(centre[0][0])]
-        plugleafdict[i]=i
-        plugimage = cv2.circle(plugimage,(centre[1][0],centre[0][0]),radius,i,-1)
+        plugcentredict[int(i)]=[int(centre[1][0]),int(centre[0][0])]
+        plugleafdict[int(i)]=int(i)
+        plugimage = cv2.circle(plugimage,(centre[1][0],centre[0][0]),radius,int(i),-1)
     return plugimage,plugcentredict,plugleafdict
 
 def petrifinder(petriprobabilityimage):
@@ -274,9 +275,10 @@ for folderpath in multifolderpath.glob("*_h5"):
             else:
                 plugcsv = plugcsv[0:0]
                 plugimage,plugcentredict,plugleafdict= plugfinder(leafimage,plugprobabilityimage)
-                for i in range(1,int(np.max(plugimage))):
-                    newplugid = i-1
+                plugindexes = np.unique(np.uint8(plugimage[plugimage!=0]))
+                for i in plugindexes:
                     plugcsv = plugcsv.append(pd.Series(),ignore_index=True)
+                    newplugid = len(plugcsv)-1
                     plugcsv['object_id'].iloc[newplugid]=newplugid
                     plugcsv['labelimage_oid'].iloc[newplugid] = i
                     plugcsv['Predicted Class'].iloc[newplugid]='Automatic'
@@ -323,17 +325,21 @@ for folderpath in multifolderpath.glob("*_h5"):
                     a=1
                 else:
                     necrosisimage = np.zeros(np.shape(leafimage))
-                    for leafnumber in range(1,np.max(leafimage)+1):
+                    leafindexes = np.unique(leafimage[leafimage!=0])
+                    for leafnumber in leafindexes:
                         necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
                         necrosisimage[leafimage==0]=0
             else:
                 necrosisimage = np.zeros(np.shape(leafimage))
-                for leafnumber in range(1,np.max(leafimage)+1):
+                leafindexes = np.unique(leafimage[leafimage!=0])
+                for leafnumber in leafindexes:
                     necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
                     necrosisimage[leafimage==0]=0
             
             counter = 0
-            for i in range(1,np.max(necrosisimage)+1):
+            necrosisindexes = np.unique(necrosisimage[necrosisimage!=0])
+            
+            for i in necrosisindexes:
                 leafid = np.unique(leafimage[necrosisimage==i])[0]
                 if not leafid in plugleafdict:
                     print("In "+filename+", necrosis "+str(i)+" was removed, no plug in leaf")

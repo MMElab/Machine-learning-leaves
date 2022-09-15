@@ -258,7 +258,7 @@ def addorremoveobject(filein,filename,folder,auto):
                     object_id = next(i for i, e in enumerate(sorted(objectcsv['object_id']) + [ None ], 0) if i != e)                              
                 else:
                     object_id = 0
-                newnumber = np.max(objectimage)+1
+                newnumber = int(np.max(objectimage)+1)
                 
                 
                 if value2 == 'n':
@@ -427,7 +427,7 @@ if plug == 1:
                             newplugid = max(plugcsv['object_id'])+1
                             plugcsv = plugcsv.append(pd.Series(),ignore_index=True)
                             plugcsv['object_id'].iloc[max(plugcsv.index)]=newplugid
-                            plugcsv['labelimage_oid'] = plugcsv['object_id']+1
+                            plugcsv['labelimage_oid'] = newplugid+1
                             plugcsv['Predicted Class'].iloc[max(plugcsv.index)]='Manual'
                             plugcsv['Center of the object_0'].iloc[max(plugcsv.index)]=coordinates[1]
                             plugcsv['Center of the object_1'].iloc[max(plugcsv.index)]=coordinates[0]
