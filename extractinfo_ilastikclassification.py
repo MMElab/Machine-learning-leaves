@@ -349,7 +349,7 @@ for folderpath in multifolderpath.glob("*_h5"):
                 plugcentre = plugcentredict[plugid]
                 necrosismask = np.isin(necrosisimage,i)
                 contours, hierarchy = cv2.findContours(np.uint8(necrosismask), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                closestDist = cv2.pointPolygonTest(contours[0], plugcentre, True)
+                closestDist = cv2.pointPolygonTest(contours[0], np.uint8(plugcentre), True)
                 necrosismaskminplug = necrosismask.copy()
                 necrosismaskminplug[plugimage==plugid]=False
                 if closestDist<filterminimumdistancenecrosis:
