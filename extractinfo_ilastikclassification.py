@@ -98,7 +98,7 @@ def petrifinder(petriprobabilityimage):
     
 # Uses the average necrosis pixel probability in a leaf segment to monitor spread 
 def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,manual=[]):
-    threshold = 0.6
+    threshold = 0.5
     contours = cv2.findContours(np.uint8(leafimage==leafnumber),cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
     ellips= cv2.fitEllipse(contours[0][0])
     image_center = ellips[0]
