@@ -21,6 +21,7 @@ import h5py
 from skimage import measure
 from tkinter import *
 from tkinter import filedialog
+from os.path import exists
 
 ## Filters
 filterplugabsence = 2                   # Filters out all plugs in a dataset if x are missing (Default=2)
@@ -154,6 +155,8 @@ root.after_idle(root.attributes,'-topmost',False)
 root.withdraw()
 multifolder = filedialog.askdirectory()
 multifolderpath = Path(multifolder)
+
+# Run the script for each folder in multifolder
 for folderpath in multifolderpath.glob("*_h5"):
     folder = str(folderpath)+'\\'
     for filein in folderpath.glob("*.h5"):
@@ -169,12 +172,12 @@ for folderpath in multifolderpath.glob("*_h5"):
         leafcsv = pd.read_csv(leafcsvfilename)
         leafimagefilename = folder +'Objects_leaf/'+filename+'.JPG_Object Identities.npy'
         leafimage = np.squeeze(np.load(leafimagefilename))
-        leafprobabilityimage = h5py.File(folder +'Pixelprobabilities_leaf/'+filename+'.JPG_Probabilities.h5')
-        leafprobabilityimage = np.squeeze(leafprobabilityimage['exported_data'])[:,:,0]
         
         # Filter out more than x amount of leaves
         if len(leafcsv)>maxleaves:
             sumprob = 10000000
+            leafprobabilityimage = h5py.File(folder +'Pixelprobabilities_leaf/'+filename+'.JPG_Probabilities.h5')
+            leafprobabilityimage = np.squeeze(leafprobabilityimage['exported_data'])[:,:,0]
             for i in leafcsv['labelimage_oid']:
                 tempsumprob = np.sum(leafprobabilityimage[leafimage==i])
                 if tempsumprob<sumprob:
@@ -184,25 +187,40 @@ for folderpath in multifolderpath.glob("*_h5"):
             leafimage[leafimage==removeindex]=0
             
        # Petri data
-        petriprobabilityimage = h5py.File(folder +'Pixelprobabilities_petri/'+filename+'.JPG_Probabilities.h5')
-        petriprobabilityimage = np.squeeze(petriprobabilityimage['exported_data'])[:,:,0]
+        
         petriimagefilename = folder +'Objects_petri/'+filename+'.JPG_Object Identities.npy'
         petrifilename = folder +'Objects_petri/'+filename+'.JPG_table.csv'
         
+        # Make folder if no objects_petri exists
         if not os.path.isdir(folder +'Objects_petri/'):
             os.mkdir(folder +'Objects_petri/')
-        petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
-        petricsv =  leafcsv[0:0]
-        petrisize = np.sum(petriimage)
-        petricsv = petricsv.append(pd.Series(),ignore_index=True)
-        petricsv['object_id'].iloc[0]=0
-        petricsv['labelimage_oid'].iloc[0] = 1
-        petricsv['Predicted Class'].iloc[0]='Automatic'
-        petricsv['Center of the object_0'].iloc[0]=a
-        petricsv['Center of the object_1'].iloc[0]=b
-        petricsv['Size in pixels'].iloc[0]=np.sum(petriimage==1)
-        petricsv['Radii of the object_1']=petriradius
-        petricsv['Radii of the object_0']=petriradius
+
+        # Check if petri file exists and whether automatic determination has already occurred (speeds up)
+        file_exists = exists(petrifilename)
+        if file_exists == True:
+            petricsv = pd.read_csv(petrifilename)
+            petriimage = np.squeeze(np.load(petriimagefilename))
+            automaticpetri = petricsv['Predicted Class'][0] == 'Automatic'
+
+        if file_exists == True and automaticpetri == True:
+            petriradius = petricsv['Radii of the object_0'][0]
+            petrisize = petricsv['Size in pixels'].iloc[0]
+            
+        else:
+            petriprobabilityimage = h5py.File(folder +'Pixelprobabilities_petri/'+filename+'.JPG_Probabilities.h5')
+            petriprobabilityimage = np.squeeze(petriprobabilityimage['exported_data'])[:,:,0]
+            petriimage,a,b,petriradius = petrifinder(petriprobabilityimage)
+            petricsv =  leafcsv[0:0]
+            petrisize = np.sum(petriimage)
+            petricsv = petricsv.append(pd.Series(),ignore_index=True)
+            petricsv['object_id'].iloc[0]=0
+            petricsv['labelimage_oid'].iloc[0] = 1
+            petricsv['Predicted Class'].iloc[0]='Automatic'
+            petricsv['Center of the object_0'].iloc[0]=a
+            petricsv['Center of the object_1'].iloc[0]=b
+            petricsv['Size in pixels'].iloc[0]=np.sum(petriimage==1)
+            petricsv['Radii of the object_1']=petriradius
+            petricsv['Radii of the object_0']=petriradius
         
         # Plug data
         plugcsvfilename = folder +'Objects_plug/'+filename+'.JPG_table.csv'
@@ -219,8 +237,7 @@ for folderpath in multifolderpath.glob("*_h5"):
             plugimage = np.squeeze(np.load(plugimagefilename))
             plugimage[leafimage==0]=0
         
-        plugprobabilityimage = h5py.File(folder +'Pixelprobabilities_plug/'+filename+'.JPG_Probabilities.h5')
-        plugprobabilityimage = np.squeeze(plugprobabilityimage['exported_data'])[:,:,1]
+        
         
         #Necrosis data
         necrosiscsvfilename = folder +'Objects_necrosis/'+filename+'.JPG_table.csv'
@@ -237,8 +254,6 @@ for folderpath in multifolderpath.glob("*_h5"):
             necrosisimage = np.squeeze(np.load(necrosisimagefilename))
             necrosisimage[leafimage==0]=0
         
-        necrosisprobabilityimage = h5py.File(folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
-        necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,1]
         numberofleaves= len(np.unique(leafimage))-1
     
     
@@ -261,7 +276,7 @@ for folderpath in multifolderpath.glob("*_h5"):
         
         # Detect plugs
         if 'labelimage_oid' in plugcsv:
-            if 'Manual' in list(plugcsv['Predicted Class']) and overwritemanuals == False:
+            if not 'label 1' in list(plugcsv['Predicted Class']) and overwritemanuals == False:
                 for i in plugcsv.labelimage_oid:
                    plugcentre = plugcsv[['Center of the object_0','Center of the object_1']].loc[plugcsv['labelimage_oid']==i]
                    plugcentre = [plugcentre.iloc[0][0],plugcentre.iloc[0][1]]
@@ -274,6 +289,8 @@ for folderpath in multifolderpath.glob("*_h5"):
                    
             else:
                 plugcsv = plugcsv[0:0]
+                plugprobabilityimage = h5py.File(folder +'Pixelprobabilities_plug/'+filename+'.JPG_Probabilities.h5')
+                plugprobabilityimage = np.squeeze(plugprobabilityimage['exported_data'])[:,:,1]
                 plugimage,plugcentredict,plugleafdict= plugfinder(leafimage,plugprobabilityimage)
                 plugindexes = np.unique(np.uint8(plugimage[plugimage!=0]))
                 for i in plugindexes:
@@ -321,15 +338,19 @@ for folderpath in multifolderpath.glob("*_h5"):
             
             
             if 'Predicted Class' in necrosiscsv:
-                if 'Manual' in list(necrosiscsv['Predicted Class']) and overwritemanuals == False:
+                if not 'label 1' in list(necrosiscsv['Predicted Class']) and overwritemanuals == False:
                     a=1
                 else:
+                    necrosisprobabilityimage = h5py.File(folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
+                    necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,1]
                     necrosisimage = np.zeros(np.shape(leafimage))
                     leafindexes = np.unique(leafimage[leafimage!=0])
                     for leafnumber in leafindexes:
                         necrosisimage = necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosisimage)
                         necrosisimage[leafimage==0]=0
             else:
+                necrosisprobabilityimage = h5py.File(folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
+                necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,1]
                 necrosisimage = np.zeros(np.shape(leafimage))
                 leafindexes = np.unique(leafimage[leafimage!=0])
                 for leafnumber in leafindexes:
@@ -393,10 +414,10 @@ for folderpath in multifolderpath.glob("*_h5"):
         leafcsv.to_csv(leafcsvfilename,index=False)
         petricsv.to_csv(petrifilename,index=False)
         necrosiscsv.to_csv(necrosiscsvfilename,index=False)
-        petriimage=np.save(petriimagefilename,petriimage)
-        plugimage=np.save(plugimagefilename,plugimage)
-        necrosisimage=np.save(necrosisimagefilename,necrosisimage)
-        leafimage=np.save(leafimagefilename,leafimage)
+        petriimage=np.save(petriimagefilename,np.uint8(petriimage))
+        plugimage=np.save(plugimagefilename,np.uint8(plugimage))
+        necrosisimage=np.save(necrosisimagefilename,np.uint8(necrosisimage))
+        leafimage=np.save(leafimagefilename,np.uint8(leafimage))
     
  #     if matchingleaveplug == 1:
     #         for i in range(len(plugcsv)):
