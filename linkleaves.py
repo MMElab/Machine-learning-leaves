@@ -52,7 +52,7 @@ for folderpath in multifolderpath.glob("*_h5"):
 # Match leaves from different frames based on size       
         bestpartnerdict = dict()
         leaflinkdict = dict()
-        numberofimages = len(Sumtot)
+        numberofimages = len(Sumtot)+1
         distanceleafsizes=np.full((numberofimages,numberofimages),10000)
         leaflinkarray=np.full((numberofimages,numberofimages),dict())
         for j,k in enumerate(Sumtot[3]):
@@ -99,7 +99,7 @@ for folderpath in multifolderpath.glob("*_h5"):
             leafdict = leaflinkdict[location]
             if len(leafdict)>0:
                 if len(datafile)==3 or len(datafile)==5:
-                    datafile['labelimage_oid_original'] = datafile['labelimage_oid'].map(leafdict).astype(int)
+                    datafile['labelimage_oid_original'] = (datafile['object_id']+1).map(leafdict).astype(int)
                     combineddatafileentry['objectid'] = datafile['filename_original'].astype(str) +'_'+datafile['labelimage_oid_original'].astype(str)
                     combineddatafileentry['day']=day
                     combineddatafileentry[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]=datafile[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]
@@ -108,8 +108,15 @@ for folderpath in multifolderpath.glob("*_h5"):
             datafile.to_csv(filein,index=False)
 combineddatafile['normleavearea']=combineddatafile['Size in pixels']*(75/combineddatafile['petriradius'])**2
         
-    
-        
+combineddatafile[['number','condition','BR','D0','leaf']]=combineddatafile['objectid'].str.rsplit('_',n=4,expand=True)
+#combineddatafile = combineddatafile.loc[combineddatafile['objectid'].str.contains('Ctrl')==False]
+
+combineddatafile = combineddatafile.fillna(0)
+trial= combineddatafile.groupby(['condition','day']).mean().reset_index()
+trial.set_index('day',inplace=True)
+trial.groupby('condition')['necrosis_leaffraction'].plot(legend=True)
+
+       
 
     
 # trialimage = np.load('C:/Users/vinkjo/Downloads/OneDrive_2022-03-17/230222 1 D0_h5/IMG_9796.JPG_Object Identities.npy')

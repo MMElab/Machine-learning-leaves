@@ -53,7 +53,12 @@ def closestandfurthestpoints(skeleton,point):
 
 # Draws outlines of the plug,petridish,leaf and necrosis in the original image
 def drawOutlines(impath,outpath,leafimage,necrosisimage,petriimage,plugimage):
-    im = cv2.imread(impath)
+    im = h5py.File(impath)
+    im = np.squeeze(im['data'][0])
+    im = im[:,:,::-1]
+    #im = cv2.imread(impath)
+    if len(im) == 3024:
+        im = cv2.rotate(im, cv2.cv2.ROTATE_90_CLOCKWISE)
     #cv2.imshow('image',im)
     contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     for i in contours:
@@ -99,6 +104,7 @@ def petrifinder(petriprobabilityimage):
     
 # Uses the average necrosis pixel probability in a leaf segment to monitor spread 
 def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,manual=[]):
+    originalnecrosismask = necrosismask.copy()
     threshold = 0.5
     contours = cv2.findContours(np.uint8(leafimage==leafnumber),cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)    
     ellips= cv2.fitEllipse(contours[0][0])
@@ -132,12 +138,19 @@ def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,
            segmentmask[segmentcoords]=i
         segmentmaskrot = cv2.warpAffine(segmentmask,rot_matinv, leafimage.shape[1::-1], flags=cv2.WARP_FILL_OUTLIERS)
         necrosislist = list()
+        goodtogo = 0
+        strictthreshold = 0.8
         for i in range(1,len(segments)):
             rotcoords = (segmentmaskrot==i)
             avnecrosis = np.mean(necrosisprobabilityimage[rotcoords])
             if avnecrosis > threshold:
                 necrosismask[rotcoords]=1
                 necrosislist.append(i)
+            if avnecrosis> strictthreshold:
+                goodtogo = 1
+        if goodtogo == 0:
+            necrosislist = list()
+            necrosismask = originalnecrosismask
         for i in range(1,len(segments)):
             if i not in necrosislist:
                 if (i+1 in necrosislist and i-1 in necrosislist) or (i+2 in necrosislist and i-2 in necrosislist):
@@ -251,6 +264,8 @@ for folderpath in multifolderpath.glob("*_h5"):
             necrosisimage = np.zeros(np.shape(petriimage))
         else:    
             necrosiscsv = pd.read_csv(necrosiscsvfilename)
+            if not 'object_id' in necrosiscsv:
+                necrosiscsv =  leafcsv[0:0]
             necrosisimage = np.squeeze(np.load(necrosisimagefilename))
             necrosisimage[leafimage==0]=0
         
@@ -403,7 +418,8 @@ for folderpath in multifolderpath.glob("*_h5"):
             plugimage[plugimage>0] = 0
 
         # Write output
-        impath = folder[:-4] + '\\' + filename + '.JPG'
+        #impath = folder[:-4] + '\\' + filename + '.JPG'
+        impath = folder + filename + '.JPG.h5'
         outpath = folder[:-4] + '_outlined_images\\' + filename + '.JPG'
         if not os.path.isdir(folder[:-4] + '_outlined_images\\'):
             os.mkdir(folder[:-4] + '_outlined_images\\')

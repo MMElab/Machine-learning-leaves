@@ -88,6 +88,9 @@ def necrosisfinder(leafimage,necrosisprobabilityimage,leafnumber,necrosismask=0,
 
 def draw_plug(impath): 
     global img
+    #img = h5py.File(impath)
+    #img = np.squeeze(img['data'][0])
+    #img = img[:,:,::-1]
     img = cv2.imread(impath)
     cv2.namedWindow('image',cv2.WINDOW_NORMAL) 
     cv2.setMouseCallback('image',draw_circle)
@@ -101,7 +104,10 @@ def draw_plug(impath):
         elif k == ord('n'):
             cv2.destroyAllWindows()
             pluglist = []
-            img = cv2.imread(impath)
+            img = h5py.File(impath)
+            img = np.squeeze(img['data'][0])
+            img = img[:,:,::-1]
+            #img = cv2.imread(impath)
             cv2.namedWindow('image',cv2.WINDOW_NORMAL)
             cv2.setMouseCallback('image',draw_circle)
         elif k == ord('y'):
@@ -109,7 +115,12 @@ def draw_plug(impath):
     return pluglist
 
 def drawOutlines(impath,outpath,leafimage,necrosisimage,petriimage,plugimage):
-    im = cv2.imread(impath)
+    im = h5py.File(impath)
+    im = np.squeeze(im['data'][0])
+    im = im[:,:,::-1]
+    #im = cv2.imread(impath)
+    if len(im) == 3024:
+        im = cv2.rotate(im, cv2.cv2.ROTATE_90_CLOCKWISE)
     contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     for i in contours:
         cv2.drawContours(im,i,-1,(0,255,0),thickness=5)
@@ -126,7 +137,12 @@ def drawOutlines(impath,outpath,leafimage,necrosisimage,petriimage,plugimage):
     return
 
 def drawOutlines_display(impath,leafimage,necrosisimage,petriimage,plugimage):
-    im = cv2.imread(impath)
+    im = h5py.File(impath)
+    im = np.squeeze(im['data'][0])
+    im = im[:,:,::-1]
+    #im = cv2.imread(impath)
+    if len(im) == 3024:
+        im = cv2.rotate(im, cv2.cv2.ROTATE_90_CLOCKWISE)
     contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
     for i in contours:
         cv2.drawContours(im,i,-1,(0,255,0),thickness=5)
@@ -214,16 +230,18 @@ def addorremoveobject(filein,filename,folder,auto):
             if len(objectcsv)==0:
                 print('there is nothing to remove')
                 break
-            
-            for i in objectcsv.index:
-                number = objectcsv['labelimage_oid'][i]
-                centre = (int(im.shape[1]-objectcsv['Center of the object_1'][i]),int(objectcsv['Center of the object_0'][i]))
+            for number in np.unique(objectimage[objectimage!=0]):
+                i = objectcsv.loc[objectcsv['labelimage_oid']==number].index[0]
+                if np.isnan(objectcsv['Center of the object_1'][i]):
+                    centre = [np.where(necrosisimage==1)[0][0],np.where(necrosisimage==1)[1][0]]
+                else:
+                    centre = (int(im.shape[1]-objectcsv['Center of the object_1'][i]),int(objectcsv['Center of the object_0'][i]))
                 im = cv2.putText(im,str(number),centre,cv2.FONT_HERSHEY_PLAIN,10,(255,255,255),20)
             cv2.namedWindow('image',cv2.WINDOW_NORMAL)
             cv2.imshow('image',im)
             k = cv2.waitKey(1000)
             cv2.destroyAllWindows()
-            plt.imshow(im)
+            plt.imshow(im[:,:,::-1])
             plt.show()
             removeindices=input('Which numbers do you want to remove?')
             removeindices = eval(removeindices)
@@ -239,7 +257,7 @@ def addorremoveobject(filein,filename,folder,auto):
             cv2.imshow('image',im)
             k = cv2.waitKey(3000)
             cv2.destroyAllWindows()
-            plt.imshow(im)
+            plt.imshow(im[:,:,::-1])
             plt.show()
             check=input('Are you sure you wanted these objects removed?')
             if check == 'y':
@@ -307,9 +325,9 @@ def addorremoveobject(filein,filename,folder,auto):
                 im = drawOutlines_display(filein,leafimage,necrosisimage,petriimage,plugimage)
                 cv2.namedWindow('Converted_image',cv2.WINDOW_NORMAL)
                 cv2.imshow('Converted_image',im)
-                k = cv2.waitKey(20000)
+                k = cv2.waitKey(4000)
                 cv2.destroyAllWindows()
-                plt.imshow(im)
+                plt.imshow(im[:,:,::-1])
                 plt.show()
                 check = input('are you happy with the selected region(y/n)?')
                 cv2.destroyAllWindows()
@@ -454,6 +472,7 @@ while processmultiple == 1:
         folder = os.path.dirname(filein)
         folder = folder.rstrip('_outlined_images')+'_h5/'
         auto=0
+        filein = folder + filename + '.JPG.h5'
         addorremoveobject(filein,filename,folder,auto)
     else:
         break 
