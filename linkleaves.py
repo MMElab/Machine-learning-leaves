@@ -99,7 +99,7 @@ for folderpath in multifolderpath.glob("*_h5"):
             leafdict = leaflinkdict[location]
             if len(leafdict)>0:
                 if len(datafile)==3 or len(datafile)==5:
-                    datafile['labelimage_oid_original'] = (datafile['object_id']+1).map(leafdict).astype(int)
+                    datafile['labelimage_oid_original'] = (datafile['object_id']+1-np.min(datafile['object_id'])).map(leafdict).astype(int)
                     combineddatafileentry['objectid'] = datafile['filename_original'].astype(str) +'_'+datafile['labelimage_oid_original'].astype(str)
                     combineddatafileentry['day']=day
                     combineddatafileentry[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]=datafile[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]
