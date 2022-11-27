@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 from scipy.optimize import linear_sum_assignment
 from tkinter import filedialog
+import cv2
 
 # Load datafiles
 maxleafdifference = 200
@@ -27,13 +28,20 @@ originalfolderpath = list(multifolderpath.glob("*D0_h5"))[0]
 combineddatafile = pd.DataFrame()
 # Calculate properties of leaves in original (Day 0) folder
 Sumtot_original = pd.DataFrame()
+originalleaffolderpath = originalfolderpath / 'Objects_leaf'
 for filein in originalfolderpath.glob("*Summaryoutput.csv"):
     datafile_original = pd.read_csv(filein)
     filename = os.path.basename(datafile_original['filename'][0])
+    filenameleafimage = originalfolderpath / 'Objects_leaf' / (filename + '.JPG_Object Identities.npy')
+    leafimage = np.load(filenameleafimage)
+    leafimage[leafimage>1]=1
+    moments = cv2.moments(leafimage)
+    Humoments = cv2.HuMoments(moments)
+    Humoments = Humoments[0:6]
     numberofleaves = len(datafile_original)
     normalizedscale = petriradius/datafile_original['petriradius'][0]
     datafile_original['normleavearea']=datafile_original['Size in pixels']*(normalizedscale**2)
-    Sumtot_original = Sumtot_original.append([[filename,numberofleaves,normalizedscale,list(datafile_original['normleavearea']),list(datafile_original['object_id'])]])
+    Sumtot_original = Sumtot_original.append([[filename,numberofleaves,normalizedscale,Humoments,list(datafile_original['normleavearea']),list(datafile_original['object_id'])]])
 
 # Calculate properties of leaves in other (>Day 0) folders
 for folderpath in multifolderpath.glob("*_h5"):
@@ -44,10 +52,16 @@ for folderpath in multifolderpath.glob("*_h5"):
         for filein in folderpath.glob("*Summaryoutput.csv"):
             datafile = pd.read_csv(filein)
             filename = os.path.basename(datafile['filename'][0])
+            filenameleafimage = folderpath / 'Objects_leaf' / (filename + '.JPG_Object Identities.npy')
+            leafimage = np.load(filenameleafimage)
+            leafimage[leafimage>1]=1
+            moments = cv2.moments(leafimage)
+            Humoments = cv2.HuMoments(moments)
+            Humoments = Humoments[0:6]
             numberofleaves = len(datafile)
             normalizedscale = petriradius/datafile['petriradius'][0]
             datafile['normleavearea']=datafile['Size in pixels']*(normalizedscale**2)
-            Sumtot = Sumtot.append([[filename,numberofleaves,normalizedscale,list(datafile['normleavearea']),list(datafile['object_id'])]])
+            Sumtot = Sumtot.append([[filename,numberofleaves,normalizedscale,Humoments,list(datafile['normleavearea']),list(datafile['object_id'])]])
         
 # Match leaves from different frames based on size       
         bestpartnerdict = dict()
@@ -56,17 +70,22 @@ for folderpath in multifolderpath.glob("*_h5"):
         distanceleafsizes=np.full((numberofimages,numberofimages),10000)
         leaflinkarray=np.full((numberofimages,numberofimages),dict())
         for j,k in enumerate(Sumtot[3]):
+            for l,m in enumerate(Sumtot_original[3]):
+                ka=np.sign(k)*np.log(abs(k))
+                ma=np.sign(m)*np.log(abs(m))
+                distanceleafsizes[j,l] = np.sum(abs(1/ka-1/ma))
+        for j,k in enumerate(Sumtot[4]):
             sortedsizes= np.sort(k)
             sortedindices = np.argsort(k)
             bestmatch=10000
-            for l,m in enumerate(Sumtot_original[3]):
+            for l,m in enumerate(Sumtot_original[4]):
                 if len(m)!=len(k):
                     # print(j)
                     # print(k)
                     continue
                 sortedsizes1= np.sort(m)
                 sortedindices1 = np.argsort(m)
-                distanceleafsizes[j,l]=np.sum(abs(sortedsizes-sortedsizes1))
+                #distanceleafsizes[j,l]=np.sum(abs(sortedsizes-sortedsizes1))
                 if np.sum(abs(np.array(k)-np.array(m)))/len(m)<maxleafdifference:
                     leaflinkarray[j,l] = dict(zip(range(1,len(m)+1),range(1,len(m)+1)))
                 else:
@@ -102,7 +121,7 @@ for folderpath in multifolderpath.glob("*_h5"):
                     datafile['labelimage_oid_original'] = (datafile['object_id']+1-np.min(datafile['object_id'])).map(leafdict).astype(int)
                     combineddatafileentry['objectid'] = datafile['filename_original'].astype(str) +'_'+datafile['labelimage_oid_original'].astype(str)
                     combineddatafileentry['day']=day
-                    combineddatafileentry[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]=datafile[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id']]
+                    combineddatafileentry[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id','filename']]=datafile[['Size in pixels','petriradius','necrosis_area','necrosis_distance','necrosis_leaffraction','plug_id','filename']]
                     combineddatafile=combineddatafile.append(combineddatafileentry)
                     combineddatafileentry = pd.DataFrame()
             datafile.to_csv(filein,index=False)

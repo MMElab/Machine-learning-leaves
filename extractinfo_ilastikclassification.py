@@ -56,6 +56,7 @@ def drawOutlines(impath,outpath,leafimage,necrosisimage,petriimage,plugimage):
     im = h5py.File(impath)
     im = np.squeeze(im['data'][0])
     im = im[:,:,::-1]
+    im = np.ascontiguousarray(im, dtype=np.uint8)
     #im = cv2.imread(impath)
     if len(im) == 3024:
         im = cv2.rotate(im, cv2.cv2.ROTATE_90_CLOCKWISE)

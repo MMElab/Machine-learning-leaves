@@ -358,7 +358,9 @@ def addorremoveobject(filein,filename,folder,auto):
                     np.save(objectimagefilename,objectimage)
                     newentry = {'Predicted Class': 'Manual','object_id':object_id,'labelimage_oid': newnumber,'Size in pixels': np.sum(objectimage==newnumber), 'Object Area': np.sum(objectimage==newnumber), 'Center of the object_0': cX, 'Center of the object_1': cY,'Radii of the object_1': R, 'Radii of the object_0': R}
                     objectcsv = objectcsv.append(newentry,ignore_index=True)
+                    objectcsv.dropna(how='all',inplace=True)
                     objectcsv.to_csv(objectcsvfilename,index=False)
+                    
                 elif check == 'n':
                     globals()[objectname+'image'] = objectimage
                     im = drawOutlines_display(filein,leafimage,necrosisimage,petriimage,plugimage)
