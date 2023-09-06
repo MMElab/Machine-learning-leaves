@@ -14,15 +14,17 @@ from tkinter import *
 from tkinter.filedialog import askopenfilename
 from tkinter import filedialog
 
-def batchilastik(folder):
+def batchilastik(folder,projectfolder):
     ## choose whether pixel and/or object projects are run
     pixel = 1
     objectname = 0
     ## choose for which kind of part of the analysis is run
     petri = 0
-    plug = 1
+    plug = 0
     necrosis = 1
     leaf = 0
+    
+    
     
     for filein in folder.glob("*.h5"):
         filename = os.path.basename(filein)
@@ -31,37 +33,37 @@ def batchilastik(folder):
         if pixel == 1:
             if petri == 1:
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Petridish_pixel.ilp",
+                    f"--project={projectfolder}\\Petridish_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
             if plug == 1:
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Plug_pixel.ilp",
+                    f"--project={projectfolder}\\Plug_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
             if necrosis == 1:
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Necrosis_pixel.ilp",
+                    f"--project={projectfolder}\\Necrosis_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
             if leaf == 1:
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
                     "--output_format=compressed hdf5",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Leaf_pixel.ilp",
+                    f"--project={projectfolder}\\Leaf_pixel.ilp",
                     f"--raw_data={filein}",
                     "--export_source=Probabilities"
                 ])
@@ -70,9 +72,9 @@ def batchilastik(folder):
                 Petrifilename = os.path.dirname(filein) + '\\Pixelprobabilities_petri\\' + pixelprobfilename
                 Petrifilename = Path(Petrifilename)
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Petridish_object_compacted.ilp",
+                    f"--project={projectfolder}\\Petridish_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Petrifilename}"
@@ -81,9 +83,9 @@ def batchilastik(folder):
                 Plugfilename = os.path.dirname(filein) + '\\Pixelprobabilities_plug\\' + pixelprobfilename
                 Plugfilename = Path(Plugfilename)
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Plug_object_compacted.ilp",
+                    f"--project={projectfolder}\\Plug_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Plugfilename}"
@@ -92,9 +94,9 @@ def batchilastik(folder):
                 Leaffilename = os.path.dirname(filein) + '\\Pixelprobabilities_leaf\\' + pixelprobfilename
                 Leaffilename = Path(Leaffilename)
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Leaf_object_compacted.ilp",
+                    f"--project={projectfolder}\\Leaf_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Leaffilename}"
@@ -103,9 +105,9 @@ def batchilastik(folder):
                 Necrosisfilename = os.path.dirname(filein) + '\\Pixelprobabilities_necrosis\\' + pixelprobfilename
                 Necrosisfilename = Path(Necrosisfilename)
                 subprocess.run([
-                    "C:\\Program Files\\ilastik-1.3.3post3\\ilastik.exe",
+                    "C:\\Program Files\\ilastik-1.4.0\\ilastik.exe",
                     "--headless",
-                    "--project=C:\\Users\\robinsha\\OneDrive - Victoria University of Wellington - STAFF\\Documents\\RF Position - MG\\MPI Project HFR007\\Experiments\\HFR007.D\\Pipeline\\Necrosis_object_compacted.ilp",
+                    f"--project={projectfolder}\\Necrosis_object_compacted.ilp",
                     "--export_source=Object Identities",
                     f"--raw_data={filein}",
                     f"--prediction_maps={Necrosisfilename}"
@@ -113,10 +115,14 @@ def batchilastik(folder):
 
 root = Tk()
 root.withdraw()
+print(' Select the folder that contains your data')
 multifolder = filedialog.askdirectory()
+print(' Select the folder that contains your projects')
+projectfolder = Path(filedialog.askdirectory())
 multifolderpath = Path(multifolder)
+
 for folder in multifolderpath.glob("*_h5"):
-    batchilastik(folder)
+    batchilastik(folder, projectfolder)
     # folder = Path(folder)
     # filelist = folder.glob("*.h5")
     # files = " ".join(f'"{f}"' for f in filelist)

@@ -35,11 +35,11 @@ class PolygonDrawer(object):
         if event == cv2.EVENT_MOUSEMOVE:
             # We want to be able to draw the line-in-progress, so update current mouse position
             self.current = (x, y)
-        elif event == cv2.EVENT_LBUTTONDOWN:
+        elif event == cv2.EVENT_LBUTTONDBLCLK:
             # Left click means adding a point at current position to the list of points
             print("Adding point #%d with position(%d,%d)" % (len(self.points), x, y))
             self.points.append((x, y))
-        elif event == cv2.EVENT_RBUTTONDOWN:
+        elif event == cv2.EVENT_RBUTTONDBLCLK:
             # Right click means we're done
             print("Completing polygon with %d points." % len(self.points))
             self.done = True
@@ -80,10 +80,7 @@ class PolygonDrawer(object):
             cv2.fillPoly(canvas, np.array([self.points]), FINAL_LINE_COLOR)
         # And show it
         cv2.imshow(self.window_name, canvas)
-        # Waiting for the user to press any key
-        cv2.waitKey()
 
-        cv2.destroyWindow(self.window_name)
         return self.points
 
 # ============================================================================
