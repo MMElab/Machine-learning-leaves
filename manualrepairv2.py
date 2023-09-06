@@ -138,6 +138,8 @@ def find_necrosis_pixels_on_click(leafimage,plugcentredict):
         radiusdict = dict()
         necrosisimage = necrosisimageoriginal.copy()
         img = cv2.imread(impath)
+        leafcontours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(img,leafcontours,-1,(0,255,0),thickness=5)
         cv2.namedWindow('image',cv2.WINDOW_NORMAL)
         cv2.setMouseCallback('image',draw_necrosis)
         contours,_ = cv2.findContours(np.flip(np.uint8(necrosisimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
@@ -380,7 +382,7 @@ def addorremoveobject(filein,filename,folder):
         # Fix necrosis
         if value2 == 'n':
             necrosisareadict = dict()
-            print("Double click on edge of necrosis to add (q to exit, n to try again)")
+            print("Double click on edge of necrosis to add (y to save, q to exit, n to try again)")
             necrosisimage, radiusdict = find_necrosis_pixels_on_click(leafimage,plugcentredict)        
             for i in np.unique(necrosisimage):
                 necrosisareadict[i] = np.sum(necrosisimage==i)
@@ -395,7 +397,7 @@ def addorremoveobject(filein,filename,folder):
         elif value2 == 'p':    
             plugimage, plugcentredict = find_plug_pixels_on_click(leafimage)
             summaryoutput['plugcentre'] = summaryoutput['leafnumber'].map(plugcentredict)
-            print("Double click on middle of plug to add (q to exit, n to try again)")
+            print("Double click on middle of plug to add (y to save, q to exit, n to try again)")
             np.save(plugfilename,np.uint8(plugimage))
             summaryoutput.to_csv(summaryoutputfilename,index=False)
         
@@ -406,6 +408,7 @@ def addorremoveobject(filein,filename,folder):
              originalleafimage = leafimage.copy() 
              k = ord('n')
              exitcall = 0
+             adding = 0
              while k == (ord('n')):
                  leafimage = originalleafimage.copy()
                  img = cv2.imread(impath)
@@ -414,9 +417,9 @@ def addorremoveobject(filein,filename,folder):
                  cv2.drawContours(img,contours,-1,(0,255,0),thickness=5)
                  cv2.setMouseCallback("image", leaf_remover)
                  cv2.imshow('image',img) 
-                 print("Press any other key to move towards adding leavings")
-                 print("Press any other key to move towards adding leavings")
-                 print("Press any other key to move towards adding leavings")
+                 print('Double click with right mouse button to remove leaves')
+                 print("Press a to move towards adding leaves")
+                 print("Press y if done")
                  k = cv2.waitKey(0)
                  if k == ord('q'):
                      cv2.destroyAllWindows()
@@ -424,9 +427,11 @@ def addorremoveobject(filein,filename,folder):
                      break
                  elif k == ord('n'):
                      continue
+                 elif k == ord('a'):
+                     adding = 1
              if exitcall == 1:
                 return
-
+                
             # Remove from summaryoutput leaves no longer in leafimage
              summaryoutputold = summaryoutput.copy()
              summaryoutput = summaryoutput[summaryoutput['leafnumber'].isin(np.unique(leafimage))]
@@ -435,59 +440,60 @@ def addorremoveobject(filein,filename,folder):
              cv2.destroyAllWindows()
              
              # Draw in leaves
-             img = cv2.imread(impath)
-             contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-             cv2.drawContours(img,contours,-1,(0,255,0),thickness=5)
-             k = ord('n')
-             pointscollection = []
-             leafimage2 = leafimage.copy()
-             while k == (ord('n')):
-                 cv2.namedWindow('Drawingimage',cv2.WINDOW_NORMAL)
-                 print('draw Outline in Figure')
-                 pdrun = PolygonDrawer('Drawingimage',img)
-                 points = pdrun.run()
-                 pointscollection.append(points)
-                 k = cv2.waitKey(0)
-                 cv2.destroyAllWindows()
-                 if k == ord('q'):
-                     pointscollection = []
-                     leafimage = originalleafimage.copy()
+             if adding == 1:
+                 img = cv2.imread(impath)
+                 contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+                 cv2.drawContours(img,contours,-1,(0,255,0),thickness=5)
+                 k = ord('n')
+                 pointscollection = []
+                 leafimage2 = leafimage.copy()
+                 while k == (ord('n')):
+                     cv2.namedWindow('Drawingimage',cv2.WINDOW_NORMAL)
+                     print("draw Outline in Figure by double clicking with left mouse button at points along the leafs edge ending \n with a double right mouse button click")
+                     pdrun = PolygonDrawer('Drawingimage',img)
+                     points = pdrun.run()
+                     pointscollection.append(points)
+                     k = cv2.waitKey(0)
                      cv2.destroyAllWindows()
-                     break
-                 elif k == ord('n'):
-                     leafimage = leafimage2.copy()
-                     img = cv2.imread(impath)
-                     cv2.namedWindow('image',cv2.WINDOW_NORMAL)
-                     contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
-                     cv2.drawContours(img,contours,-1,(0,255,0),thickness=5)
-                     pointscollection = []
-                     continue
-                 elif k == ord('y'):
-                     k = ord('n')
-                     continue
-             for points in pointscollection:
-                 points = [np.flip(x) for x in np.array([points])[0]]
-                 points = [[x[0], leafimage.shape[0]-x[1]] for x in points]
-                 newnumber = find_smallest_missing_integer(np.unique(leafimage))
-                 leafimage = cv2.fillPoly(leafimage.copy(), np.array([points]), newnumber)
-                 leafarea = np.sum(leafimage==newnumber)
-             
-                # Calculate location of plug and necrosis for new leaf
-                 plugprobabilityimage = h5py.File(h5folder +'Pixelprobabilities_plug/'+filename+'.JPG_Probabilities.h5')
-                 plugprobabilityimage = np.squeeze(plugprobabilityimage['exported_data'])[:,:,1]
-                 necrosisprobabilityimage = h5py.File(h5folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
-                 necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,0]
-                 plugimagenew,plugcentredictnew,plugleafdictnew = fff.plugfinder(leafimage,plugprobabilityimage,leafindexes=[newnumber])
-                 plugimage[plugimagenew>0] = plugimagenew[plugimagenew>0]
-                 plugcentredict.update(plugcentredictnew)
-                 necrosisimagenew, necrosisradiusdict, necrosisareadict = fff.necrosisfinder(leafimage, necrosisprobabilityimage,plugcentredict,leafindexes=[newnumber])
-                 necrosisimage[necrosisimagenew>0] = necrosisimagenew[necrosisimagenew>0]
+                     if k == ord('q'):
+                         pointscollection = []
+                         leafimage = originalleafimage.copy()
+                         cv2.destroyAllWindows()
+                         break
+                     elif k == ord('n'):
+                         leafimage = leafimage2.copy()
+                         img = cv2.imread(impath)
+                         cv2.namedWindow('image',cv2.WINDOW_NORMAL)
+                         contours,_ = cv2.findContours(np.flip(np.uint8(leafimage.T),axis=1),cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_NONE)
+                         cv2.drawContours(img,contours,-1,(0,255,0),thickness=5)
+                         pointscollection = []
+                         continue
+                     elif k == ord('y'):
+                         k = ord('n')
+                         continue
+                 for points in pointscollection:
+                     points = [np.flip(x) for x in np.array([points])[0]]
+                     points = [[x[0], leafimage.shape[0]-x[1]] for x in points]
+                     newnumber = find_smallest_missing_integer(np.unique(leafimage))
+                     leafimage = cv2.fillPoly(leafimage.copy(), np.array([points]), newnumber)
+                     leafarea = np.sum(leafimage==newnumber)
                  
-                 # Add new entry to summaryoutput
-                 newentry= pd.DataFrame({"leafnumber": newnumber,'petriradius':summaryoutputold.petriradius[0],'petriarea':summaryoutputold.petriarea[0],'petricenter':summaryoutputold.petricenter[0],\
-                'leafarea':leafarea, 'plugcentre':str(plugcentredict[newnumber]), 'necrosisradius': necrosisradiusdict[newnumber], 'necrosisarea': necrosisareadict[newnumber]},index=[0])
-                 summaryoutput = summaryoutput.append(newentry, ignore_index=True)
-                 
+                    # Calculate location of plug and necrosis for new leaf
+                     plugprobabilityimage = h5py.File(h5folder +'Pixelprobabilities_plug/'+filename+'.JPG_Probabilities.h5')
+                     plugprobabilityimage = np.squeeze(plugprobabilityimage['exported_data'])[:,:,1]
+                     necrosisprobabilityimage = h5py.File(h5folder +'Pixelprobabilities_necrosis/'+filename+'.JPG_Probabilities.h5')
+                     necrosisprobabilityimage = np.squeeze(necrosisprobabilityimage['exported_data'])[:,:,0]
+                     plugimagenew,plugcentredictnew,plugleafdictnew = fff.plugfinder(leafimage,plugprobabilityimage,leafindexes=[newnumber])
+                     plugimage[plugimagenew>0] = plugimagenew[plugimagenew>0]
+                     plugcentredict.update(plugcentredictnew)
+                     necrosisimagenew, necrosisradiusdict, necrosisareadict = fff.necrosisfinder(leafimage, necrosisprobabilityimage,plugcentredict,leafindexes=[newnumber])
+                     necrosisimage[necrosisimagenew>0] = necrosisimagenew[necrosisimagenew>0]
+                     
+                     # Add new entry to summaryoutput
+                     newentry= pd.DataFrame({"leafnumber": newnumber,'petriradius':summaryoutputold.petriradius[0],'petriarea':summaryoutputold.petriarea[0],'petricenter':summaryoutputold.petricenter[0],\
+                    'leafarea':leafarea, 'plugcentre':str(plugcentredict[newnumber]), 'necrosisradius': necrosisradiusdict[newnumber], 'necrosisarea': necrosisareadict[newnumber]},index=[0])
+                     summaryoutput = summaryoutput.append(newentry, ignore_index=True)
+                     
              
                  # Save everything
              np.save(leaffilename,np.uint8(leafimage))        
