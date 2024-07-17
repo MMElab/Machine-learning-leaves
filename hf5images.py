@@ -1,28 +1,42 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
+Created on Thu Jul 18 11:28:45 2024
 
-This is a temporary script file.
+@author: vinkjo
 """
-import h5py
+
 import os
+import h5py
+from PIL import Image
 import numpy as np
-input_dir = 'C:\\Users\\vinkjo\\Downloads\\OneDrive_2022-03-17\\010322 1 D6'
-parent_dir = 'C:\\Users\\vinkjo\\Documents\\h5images'
-directory = "010322_1_D6"
-output_dir = os.path.join(parent_dir, directory)
-#os.mkdir(output_dir)
-filenamelist = os.listdir(input_dir)
-for filename in filenamelist:
-    convert_file(input_dir, filename, output_dir)
 
+def convert_images_to_hdf5(image_folder):
+    # Ensure the output folder exists
+    
+    
+    # Iterate through each image in the folder
+    for root, _, files in os.walk(image_folder):
+        for file_name in files:
+            if file_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff','.tif')):
+                image_path = os.path.join(root, file_name)
+                output_folder = root + '_h5'
+                os.makedirs(output_folder, exist_ok=True)
+                # Open the image file
+                with Image.open(image_path) as img:
+                    # Convert the image to an array
+                    img_array = np.array(img)
+                    
+                    # Define the HDF5 filename
+                    hdf5_filename = os.path.join(output_folder, f"{os.path.splitext(file_name)[0]}.h5")
+                    
+                    # Create an HDF5 file for this image
+                    with h5py.File(hdf5_filename, 'w') as hdf5_file:
+                        # Create a dataset in the HDF5 file for this image
+                        # Using the original filename (with extension) as the dataset name
+                        hdf5_file.create_dataset(file_name, data=img_array)
 
-def convert_file(input_dir, filename, output_dir):
-    filepath = input_dir + '\\' + filename
-    fin = open(filepath, 'rb')
-    binary_data = fin.read()
-    new_filepath = output_dir + '\\' + filename[:-4] + '.hdf5'
-    f = h5py.File(new_filepath,'a')
-    dt = h5py.special_dtype(vlen=np.dtype('uint8'))
-    dset = f.create_dataset('binary_data', (100, ), dtype=dt)
-    dset[0] = np.fromstring(binary_data, dtype='uint8')
+    print("All images have been converted and saved")
+
+# Example usage
+image_folder = 'C:/Users/vinkjo/OneDrive - Victoria University of Wellington - STAFF/Desktop/Scott'
+convert_images_to_hdf5(image_folder)
